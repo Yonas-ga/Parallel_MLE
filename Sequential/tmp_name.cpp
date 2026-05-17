@@ -2,13 +2,12 @@
 #include <cmath>
 
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
-using Data_vect = std::vector<Data_struct>;
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
     double outcome;
     Vector x;
 };
-
+using Data_vect = std::vector<Data_struct>;
 struct Loss_Function_Result {
     double value;
     Vector gradient;
@@ -50,7 +49,7 @@ Loss_Function_Result least_square(Vector& theta, Data_vect& data){
 Vector gradient_descent(Vector& theta, Data_vect& data, double step=0.01, int max_iter=1000){ //step and max_iter to be adjusted, possibly as an input of main.
     for (int i=0; i<max_iter;i++){
         Loss_Function_Result tmp = least_square(theta,data);
-        for (j=0; j<theta.size();j++){
+        for (size_t j=0; j<theta.size();j++){
             theta[j] -= step*tmp.gradient[j];
         }
     }
