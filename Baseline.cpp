@@ -82,26 +82,16 @@ CSVData readCSV(const std::string& path) {
     return result;
 }
 
+double LL_i(int y, const Eigen::MatriXd& X, int k, const Eigen::MatriXd& W) {
+    /* Computes the log-likelihood contribution of one observation*/
 
-// y is a single column vector, X is a matrix of one or more columns
-/* Eigen::VectorXd LinReg(const Eigen::VectorXd& y, const Eigen::MatrixXd& X) {
-    // Add intercept column of ones
-    Eigen::MatrixXd X_b(X.rows(), X.cols() + 1);
-    X_b.col(0) = Eigen::VectorXd::Ones(X.rows());
-    X_b.rightCols(X.cols()) = X;
+    std::unordered_set<double> unique_vals;
+    for (int i = 0; i < y.size(); ++i) {
+        unique_vals.insert(y[i]);
+    } 
+    int k = unique_vals.size();   
 
-    // OLS: beta = (X'X)^-1 X'y
-    Eigen::VectorXd beta = (X_b.transpose() * X_b).ldlt().solve(X_b.transpose() * y);
-    return beta; // beta(0) = intercept, beta(1..) = coefficients
-} */
-
-double LL(const Eigen::VectorXd& y, const Eigen::MatrixXd& X) {
-    // Add intercept column of ones
-    Eigen::MatrixXd X_b(X.rows(), X.cols() + 1);
-    X_b.col(0) = Eigen::VectorXd::Ones(X.rows());
-    X_b.rightCols(X.cols()) = X;
-
-    // OLS: beta = (X'X)^-1 X'y
+    // LL: Sum_k 
     Eigen::VectorXd beta = (X_b.transpose() * X_b).ldlt().solve(X_b.transpose() * y);
     return beta; // beta(0) = intercept, beta(1..) = coefficients
 }
