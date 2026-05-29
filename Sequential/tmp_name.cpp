@@ -1,3 +1,4 @@
+#include "data.hpp"
 #include <vector>
 #include <cmath>
 #include <iostream>
@@ -8,19 +9,17 @@
 //          j \in {1,...,d} where j is an outcome
 //          k \in {1,...,p} where k is a feature
 //          rethink data struct (maybe numpy eq)
-
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
     double outcome;
-    Vector x;
+    Vector x; // Vector of the form (1.0 constant, married, race, age, education, kids)
 };
 using Data_vect = std::vector<Data_struct>;
 struct Loss_Function_Result {
     double value;
     Vector gradient;
 };
-
 // Auxiliary functions
 
 double dot(Vector& a, Vector& b){
