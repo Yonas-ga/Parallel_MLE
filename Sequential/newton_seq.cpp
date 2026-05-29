@@ -25,6 +25,7 @@ struct Loss_Function_h {
     Vector H;
 };
 
+// Helper Functions
 
 double dot(Vector& a, Vector& b){
     double res = 0;
@@ -34,11 +35,71 @@ double dot(Vector& a, Vector& b){
     return res;
 }
 
+Vector solve(Vector& H, Vector& gradient, int d, int p){
+    /// delta = solve (H * delta  = gradient);
+    //      solve L x (L.T x delta) =: L x y = gradient
+    // 1. Find L (lower matrix) s.t L x L.T = H
+    //      H needs to be positive definite (could imporve by putting a plan B)
+    // 2. Find y (vector) s.t. L x y = gradient
+    // 3. Find delta (vector) s.t. (L.T x delta) = y
+
+    // 1. Finding L
+    int n = p*(d-1);
+    Vector L(H.size(),0.0);
+    // For all   j, L[j][j] = sqrt(H[j][j] - Sum_{0<k<n+1} L[j][k]*L[j][k])
+    // For all i,j, L[i][j] = (H[i][j] - Sum_{0<k<j} L[i][k] L[j][k])/ L[j][j]
+
+    for (size_t j = 0; j < n; ++j){
+        double Sum_for_jj = 0.0;
+        for (size_t k = 0; k < j; ++k){
+            Sum_for_jj += L[j*n + k]*L[j*n + k];
+        }
+
+        if (H[j*n+j] - Sum_for_jj < 0){
+            std::cout<< "Hessian NOT Negative"  << std::endl;
+            return Vector{};
+        }
+        L[j*n + j] = sqrt(H[j*n+j] - Sum_for_jj);
+
+        for (size_t i = j+1; i < n; ++i){
+            double Sum_for_ij = 0.0;
+            for (size_t k = 0; k < j; ++k){
+                Sum_for_ij += L[i*n + k]*L[j*n + k];
+            }
+            L[i*n + j] += (H[i*n + j] - Sum_for_ij)/L[j*n+j];
+        }
+    }
+
+    // 2. Finding y 
+    Vector y(gradient.size(),0.0);
+    // for all i, y[i] = (gradient[k] - Sum_{0<k<i-1} L[i][k] y[k])/L[i][i]
+    for (size_t i = 0; i < n; ++i){
+            double Sum_for_i = 0.0;
+            for (size_t k = 0; k < i; ++k){
+                Sum_for_i += L[i*n + k]*y[k];
+            }
+            y[i] = (gradient[i] - Sum_for_i)/L[i*n+i];
+        }
+
+    // 2. Finding delta
+    Vector delta(gradient.size(),0.0);
+    // for all i, delta[i] = (y[k] - Sum_{0<k<i-1} L[k][i] delta[k])/L[i][i]
+    for (int i = n-1; i >= 0; --i){
+        double Sum_for_i = 0.0;
+        for (size_t k = i+1; k < n; ++k){
+            Sum_for_i += L[k*n + i] * delta[k];
+        }
+        delta[i] = (y[i] - Sum_for_i)/L[i*n+i];
+    }
+
+    return delta;
+}
+
 
 // MLE functions
 Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data, int d, int p){  //Computes de loss function, Multinomial_logit is the one used in the reference paper.
     // Multinomial Logit
-    // Log Likelihood = Sum_{observtion} Sum_{k} Indicator{Output=k} [X_k \theta_k - log(Sum_{j} exp(X_j \theta_j))}
+    // Log Likelihood = Sum_{observtion} Sum_{k} Indicator{Output=k} [X_k \theta_k - log(Sum_{j} exp(X_j \theta_j))
 
     double ll = 0;
     Vector gradient(theta.size(), 0.0);
@@ -46,8 +107,8 @@ Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data,
 
     for (Data_struct& data_point : data){
 
-        std::vector<double> lcom(d);
-        std::vector<double> P(d);
+        std::vector<double> lcom(d, 0.0);
+        std::vector<double> P(d, 0.0);
         double denom = 0;
 
         for (size_t j = 0; j < d-1; ++j){
@@ -106,7 +167,7 @@ Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data,
     return res;
 } 
 
-Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = true, double step=0.01,  int max_iter=1e6, double eps=1e-10){ //step and max_iter to be adjusted, possibly as an input of main.
+Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = true, double step=0.01,  int max_iter=1e3, double eps=1e-10){ //step and max_iter to be adjusted, possibly as an input of main.
     for (int i=0; i<max_iter;i++){
         Loss_Function_h tmp = Multinomial_logit(theta,data,d,p);
         std::cout<<"||Gradient|| = "<< sqrt(dot(tmp.gradient,tmp.gradient)) << std::endl;
@@ -115,14 +176,14 @@ Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = tr
         if (dot(tmp.gradient,tmp.gradient)<eps*eps) {
             std::cout<<"eps = "<< eps << " reached!"<< std::endl;
             std::cout<< "------------------------------------------"  << std::endl;
-            int i = 0;
+            int j = 0;
                 for (double v : tmp.H) {
-                    if (i==p*(d-1)){
+                    if (j==p*(d-1)){
                         std::cout << std::endl;
-                        i=0;
+                        j=0;
                     }
                     std::cout << v << " ";
-                    i ++;
+                    j ++;
                 }
                 std::cout << std::endl;
             std::cout<< "------------------------------------------" << std::endl;
@@ -131,14 +192,22 @@ Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = tr
         if (!h){
             for (size_t j=0; j<theta.size();j++){
                 theta[j] += step*tmp.gradient[j];
-            }*/
+            }
         }
         else{
             Vector delta(theta.size(), 0.0);
-            /// delta = solve (H * delta  = gradient);
-            for (size_t j=0; j<theta.size();j++){
-                theta[j] += step*tmp.gradient[j];
+            delta = solve (tmp.H, tmp.gradient, d,p);
+            if (delta.empty()){
+                for (size_t j=0; j<theta.size();j++){
+                    theta[j] += step*tmp.gradient[j];
+                }
             }
+            else {
+                for (size_t j=0; j<theta.size();j++){
+                    theta[j] += delta[j];
+                }
+            }
+            
         }
     }
     std::cout<<"max_iter = "<< max_iter << " reached!"<< std::endl;
