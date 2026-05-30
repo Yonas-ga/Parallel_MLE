@@ -10,7 +10,7 @@
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
-    double outcome;
+    int outcome;
     Vector x;
 };
 using Data_vect = std::vector<Data_struct>;
@@ -24,7 +24,7 @@ struct Loss_Function_h {
     Vector gradient;
     Vector H;
 };
-
+Data_vect read_data(const std::string& filename); // Temporary, will probably replace with .hpp file
 // Helper Functions
 
 double dot(Vector& a, Vector& b){
@@ -217,19 +217,20 @@ Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = tr
 
 int main(){
     int N; // Number of observations
-    int d = 3; // Number of possible outcomes including base
-    int p = 2; // Number of features
+    int d = 5; // Number of possible outcomes including base
+    int p = 3; // Number of features
 
 
     // Testing Khaled's sequential MLE
     Vector theta_mle ((d-1)*p, 0.0);
     // True theta: beta_1=[1.0,-1.0], beta_2=[-1.0,1.0], beta_3=[0,0] (baseline)
     // k=2 features, d=3 alternatives
-
+    std::vector<Data_struct> data_paper = read_data("Data/FAM1968_parsed_full.csv");
+    /*
     std::vector<Data_struct> data_mle = {
-        {0, { 0.2, -1.4}},  
+        {0, { 0.2, -1.4}},   // high x1, low x2  → alt 1 likely ✓
         {1, { 0.6, -0.1}},
-        {1, {-0.6,  0.4}},   
+        {1, {-0.6,  0.4}},   // low x1, high x2  → alt 2 likely ✓
         {0, { 0.0, -0.7}},
         {0, { 1.2,  0.5}},
         {2, { 1.2,  0.3}},
@@ -238,6 +239,82 @@ int main(){
         {1, {-1.3, -0.7}},
         {2, {-0.2, -0.3}},
     };
+    */
+    std::vector<Data_struct> data_mle;
+    for (int i = 0; i < 100; i++) {
+        double x1 = (rand() % 2000 - 1000) / 1000.0;
+        double x2 = (rand() % 2000 - 1000) / 1000.0;
+        double x3 = (rand() % 2000 - 1000) / 1000.0;
+        double x4 = (rand() % 2000 - 1000) / 1000.0;
+        double x5 = 1.0;
+
+        int outcome;
+
+        double s0 = 2*x1 - x2;
+        double s1 = -x1 + 2*x2;
+        double s2 = x3;
+        double s3 = -x4;
+
+        if (s0 >= s1 && s0 >= s2 && s0 >= s3 && s0 >= 0){
+            outcome = 0;
+        } else if (s1 >= s2 && s1 >= s3 && s1 >= 0){
+            outcome = 1;
+        } else if (s2 >= s3 && s2 >= 0){
+            outcome = 2;
+        } else if (s3 >= 0){
+            outcome = 3;
+        } else{
+            outcome = 4; 
+        }
+        //data_mle.push_back({outcome, {x1,x2,x3,x4,x5}});
+    }
+
+    Vector true_theta = {
+    2.0, -1.0, 0.0,  
+    -1.0,  2.0,  0.0, 
+    1.0,  1.0,  0.0,  
+    -1.0, -1.0,  0.0  
+    }; 
+
+    for (int i = 0; i < 10000; i++) {
+
+        double x1 = (rand() % 2000 - 1000) / 1000.0;
+        double x2 = (rand() % 2000 - 1000) / 1000.0;
+
+        Vector x = {x1, x2, 1.0};
+
+        std::vector<double> score(d, 0.0);
+        double denom = 1.0; 
+
+        for (int j = 0; j < d-1; j++) {
+            for (int k = 0; k < p; k++) {
+                score[j] += x[k] * true_theta[j*p + k];
+            }
+            denom += exp(score[j]);
+        }
+
+        std::vector<double> prob(d);
+        double cumulative = 0.0;
+
+        for (int j = 0; j < d-1; j++) {
+            prob[j] = exp(score[j]) / denom;
+        }
+        prob[d-1] = 1.0 / denom;
+
+        double u = rand() / (double)RAND_MAX;
+
+        int outcome = d-1;
+        cumulative = 0.0;
+
+        for (int j = 0; j < d; j++) {
+            cumulative += prob[j];
+            if (u < cumulative) {
+                outcome = j;
+                break;
+            }
+        }
+        data_mle.push_back({outcome, x});
+    }
     
     Vector result_mle = gradient_ascent(theta_mle, data_mle, d, p); // beta_1=[1.0,-1.0], beta_2=[-1.0,1.0], beta_3=[0,0] 
     for (double v : result_mle) {

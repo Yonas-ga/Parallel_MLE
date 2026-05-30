@@ -1,7 +1,7 @@
 // Website from which i was inspired on how to parse the CSV, and learn the cpp specific methods/objects to do so.
 // https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c
 // https://medium.com/@ryan_forrester_/reading-csv-files-in-c-how-to-guide-35030eb378ad
-#include "data.hpp"
+
 #include <vector>
 #include <cmath>
 #include <iostream>
@@ -11,7 +11,7 @@
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
-    double outcome;
+    int outcome;
     Vector x; // Vector of the form (1.0 constant, married, race, age, education, kids)
 };
 using Data_vect = std::vector<Data_struct>;
@@ -57,30 +57,56 @@ Data_vect read_data(const std::string& filename){
         double wife_education = std::stod(row[collumn["V246"]]);
         double head_education = std::stod(row[collumn["V313"]]);
         double kids = std::stod(row[collumn["V398"]]);
-        double get_afdc;
-        if(afdc >0){
-            get_afdc=1;
+        double head_hour_work = std::stod(row[collumn["V47"]]);
+        double wife_hour_work = std::stod(row[collumn["V53"]]);
+        int outcome;
+        if (head_race==0 || head_race==2){
+            head_race=0; //white
         } else{
-            get_afdc=0;
+            head_race=1;//black/non-white
         }
-        
 
         if (head_sex==1 && wife_age==0){ //if single man, skip
             continue;
         } else if (head_sex==2){ //if head is woman
             double married =0;
-            Vector data = {1.0, married, head_race, head_age, head_education, kids};
-            entire_data.push_back({get_afdc, data});
+            double working;
+            if (head_hour_work>0){
+                working=1;
+            } else {
+                working=0;
+            }
+            if (afdc>0){
+                outcome = 3;
+            } else if (working==1){
+                outcome = 1;
+            } else{
+                outcome = 4;
+            }
+
+            Vector data = {1.0, head_age,head_education,head_race, kids};
+            entire_data.push_back({outcome, data});
         } else{ // head is man, who is married to woman;
             double married =1;
-            Vector data = {1.0, married, head_race, wife_age, wife_education, kids};
-            entire_data.push_back({get_afdc, data});
+            double working;
+            if (wife_hour_work>0){
+                working=1;
+                outcome = 2;
+            } else {
+                working=0;
+                outcome = 0;
+            }
+            Vector data = {1.0,wife_age, wife_education,head_race,   kids};
+            entire_data.push_back({outcome, data});
         }
+    }
+    std::vector<int> counts(5, 0);
+    for (auto& obs : entire_data) {
+        counts[obs.outcome]++;
+    }
+    for (int j = 0; j < 5; ++j) {
+        std::cout << "Outcome " << j << ": " << counts[j] << std::endl;
     }
     return entire_data;
 }
 
-int main(){
-    Data_vect data = read_data("Data/FAM1968_parsed_full.csv");
-    std::cout << "Loaded rows: " << data.size() << std::endl;
-}
