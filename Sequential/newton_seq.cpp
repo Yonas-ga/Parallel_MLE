@@ -32,6 +32,9 @@ struct SimulationResult {
     int p;
     int d;
 
+    bool cvg_h;
+    bool cvg_g;
+
     Vector errors_h;
     Vector errors_g;
     std::chrono::microseconds runtime_h;
@@ -112,7 +115,7 @@ Vector solve(Vector& H, Vector& gradient, int d, int p){
 
 
 // MLE functions
-Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data, int d, int p){  //Computes de loss function, Multinomial_logit is the one used in the reference paper.
+Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data, int d, int p, bool h){  //Computes de loss function, Multinomial_logit is the one used in the reference paper.
     // Multinomial Logit
     // Log Likelihood = Sum_{observtion} Sum_{k} Indicator{Output=k} [X_k \theta_k - log(Sum_{j} exp(X_j \theta_j))
 
@@ -159,34 +162,43 @@ Loss_Function_h Multinomial_logit(Vector& theta, std::vector<Data_struct>& data,
         }
 
         /// Hessian
-        for (size_t j = 0; j < d-1; ++j){
-            for (size_t l = 0; l < d-1; ++l){
-                double scal = 0.0;
-                if (j ==l){ 
-                    scal = P[j]*(1.0-P[j]);
-                }
-                else{
-                    scal = -P[j]*P[l];
-                }
-                for(size_t k1 = 0; k1<p; k1++){
-                    for(size_t k2 = 0; k2<p; k2++){
-                        H[(j*p + k1)*(p*(d-1)) + l*p + k2] += scal * data_point.x[k1] * data_point.x[k2]/N;
+        if (h){
+            for (size_t j = 0; j < d-1; ++j){
+                for (size_t l = 0; l < d-1; ++l){
+                    double scal = 0.0;
+                    if (j ==l){ 
+                        scal = P[j]*(1.0-P[j]);
+                    }
+                    else{
+                        scal = -P[j]*P[l];
+                    }
+                    for(size_t k1 = 0; k1<p; k1++){
+                        for(size_t k2 = 0; k2<p; k2++){
+                            H[(j*p + k1)*(p*(d-1)) + l*p + k2] += scal * data_point.x[k1] * data_point.x[k2]/N;
+                        }
                     }
                 }
             }
         }
     }
 
-
-
-    Loss_Function_h res{ll, gradient, H} ;
+    Loss_Function_h res;
+    if (h){
+        res.value = ll;
+        res.gradient = gradient;
+        res.H = H;
+    }
+    else {
+            res.value = ll;
+        res.gradient = gradient;
+    }
     return res;
 } 
 
-Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = true, bool verbose = true, double step=0.07,  int max_iter=1e3, double eps=1e-3){ //step and max_iter to be adjusted, possibly as an input of main.
+std::pair<Vector, bool> gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = true, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3){ //step and max_iter to be adjusted, possibly as an input of main.
     int N = data.size();
     for (int i=0; i<max_iter;i++){
-        Loss_Function_h tmp = Multinomial_logit(theta,data,d,p);
+        Loss_Function_h tmp = Multinomial_logit(theta,data,d,p, h);
         if (verbose)  std::cout<<"||Gradient|| = "<< sqrt(dot(tmp.gradient,tmp.gradient)) << std::endl;
 
         
@@ -204,7 +216,7 @@ Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = tr
             //     }
             //     std::cout << std::endl;
             // std::cout<< "------------------------------------------" << std::endl;
-            return theta;
+            return std::pair(theta,true);
         }
         if (!h){
             for (size_t j=0; j<theta.size();j++){
@@ -228,7 +240,7 @@ Vector gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool h = tr
         }
     }
     std::cout<<"max_iter = "<< max_iter << " reached!"<< std::endl;
-    return theta;
+    return std::pair(theta,false);
 }
 
 
@@ -280,11 +292,11 @@ int main(){
     csv << "N,p,d,"
         << "runtime_h_us,runtime_g_us,"
         << "mean_error_h,max_error_h,"
-        << "mean_error_g,max_error_g\n";
+        << "mean_error_g,max_error_g, converged_h, converged_g\n";
 
-    for (int p = 2; p < 20; p++) {
-        for (int d = 2; d<20; d++) {
-            for (int n0 = 1; n0 < 11; n0++) {
+    int p = 5;
+        for (int d = 20; d<40; d++) {
+            for (int n0 = 1; n0 < 2; n0++) {
                 Vector true_theta ((d-1)*p, 0.0);
                 Vector x (p, 0.0);
                 Vector theta_mle ((d-1)*p, 0.0);
@@ -343,19 +355,23 @@ int main(){
                 Vector theta_mle_g(p*(d-1), 0.0);
 
                 auto start_h = std::chrono::high_resolution_clock::now();
-                Vector result_mle_h = gradient_ascent(theta_mle_h, data_mle, d, p, true, false); 
+                auto tmp_h = gradient_ascent(theta_mle_h, data_mle, d, p, true, false); 
                 auto end_h = std::chrono::high_resolution_clock::now();
-
+                
+                Vector result_mle_h = tmp_h.first;
                 auto runtime_h = std::chrono::duration_cast<std::chrono::microseconds>(end_h - start_h);
                 res.runtime_h = runtime_h;
+                res.cvg_h = tmp_h.second;
 
                 auto start_g = std::chrono::high_resolution_clock::now();
-                Vector result_mle_g = gradient_ascent(theta_mle_g, data_mle, d, p, false, false);
+                auto tmp_g = gradient_ascent(theta_mle_g, data_mle, d, p, false, false);
                 auto end_g = std::chrono::high_resolution_clock::now();
                 
+                Vector result_mle_g = tmp_g.first;
                 auto runtime_g = std::chrono::duration_cast<std::chrono::microseconds>(end_g - start_g);
                 res.runtime_g = runtime_g;
-                
+                res.cvg_g = tmp_g.second;
+
                 Vector errors_h(p*(d-1), 0.0);
                 Vector errors_g(p*(d-1), 0.0);
 
@@ -385,11 +401,13 @@ int main(){
                     << mean_h      << ","
                     << max_h       << ","
                     << mean_g      << ","
-                    << max_g       << "\n";
+                    << max_g       << ","
+                    << res.cvg_h      << ","
+                    << res.cvg_g      << "\n";
                 csv.flush(); // ← add this
             }
         }
-    }
+
 
     csv.close();
     std::cout << "Results written to results.csv" << std::endl;
