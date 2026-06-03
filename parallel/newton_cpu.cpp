@@ -328,7 +328,7 @@ int main() {
     // After the results vector is populated:
     std::ofstream csv("Parralel results.csv");
 
-        csv << "N,p,d,T,"
+        csv << "N,T,p,d,"
         << "runtime_h_us,runtime_g_us,"
         << "mean_error_h,max_error_h,"
         << "mean_error_g,max_error_g, converged_h, converged_g\n";
