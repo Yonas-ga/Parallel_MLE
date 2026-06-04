@@ -8,7 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include "../data.hpp"
+#include "data.hpp"
 
 std::vector<std::string> split_csv_line(const std::string& line) {
     std::vector<std::string> row;

@@ -1,3 +1,4 @@
+#include <chrono>
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
@@ -16,12 +17,24 @@ struct Loss_Function_h {
     Vector H;
 };
 
+struct SimulationResult {
+    int N;
+    int p;
+    int d;
+
+    bool cvg_h;
+    bool cvg_g;
+
+    Vector errors_h;
+    Vector errors_g;
+    std::chrono::microseconds runtime_h;
+    std::chrono::microseconds runtime_g;
+};
+
 Data_vect read_data(const std::string& filename); // Temporary, will probably replace with .hpp file
 
-double dot(Vector& a, Vector& b){
-    double res = 0;
-    for (size_t i = 0; i < a.size(); ++i){
-        res += a[i]*b[i];
-    }
-    return res;
-}
+double dot(Vector& a, Vector& b);
+
+std::pair<Vector, bool> gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3);
+std::pair<Vector, bool> Newton_ascent(Vector& theta, Data_vect& data, int d, int p, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3);
+
