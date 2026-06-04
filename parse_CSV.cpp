@@ -8,17 +8,8 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
+#include "../data.hpp"
 
-struct Data_struct { // Tentative data structure, will be properly defined later 
-    int outcome;
-    Vector x; // Vector of the form (1.0 constant, married, race, age, education, kids)
-};
-using Data_vect = std::vector<Data_struct>;
-struct Loss_Function_Result {
-    double value;
-    Vector gradient;
-};
 std::vector<std::string> split_csv_line(const std::string& line) {
     std::vector<std::string> row;
     std::stringstream tmp(line);

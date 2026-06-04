@@ -7,20 +7,7 @@
 #include <fstream>
 #include <numeric> 
 using namespace std;
-
-
-struct Data_struct {
-    int outcome;
-    vector<double> x;
-};
-
-double dot(vector<double>& a, vector<double>& b){
-    double res = 0;
-    for (size_t i = 0; i < a.size(); ++i){
-        res += a[i]*b[i];
-    }
-    return res;
-}
+#include "../data.hpp"
 
 vector<double> solve(vector<double>& H, vector<double>& gradient, int d, int p){
     /// delta = solve (H * delta  = gradient);

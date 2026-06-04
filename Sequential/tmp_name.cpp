@@ -2,38 +2,14 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
-
+#include "../data.hpp"
 
 ///// TO DO: 
 //          make sense of i,j,k
 //          j \in {1,...,d} where j is an outcome
 //          k \in {1,...,p} where k is a feature
 //          rethink data struct (maybe numpy eq)
-using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
-struct Data_struct { // Tentative data structure, will be properly defined later 
-    int outcome;
-    Vector x; // Vector of the form (1.0 constant, married, race, age, education, kids)
-};
-using Data_vect = std::vector<Data_struct>;
-struct Loss_Function_Result {
-    double value;
-    Vector gradient;
-};
-
-Data_vect read_data(const std::string& filename); // Temporary, will probably replace with .hpp file
-
-
-
-// Auxiliary functions
-
-double dot(Vector& a, Vector& b){
-    double res = 0;
-    for (size_t i = 0; i < a.size(); ++i){
-        res += a[i]*b[i];
-    }
-    return res;
-}
 
 
 // MLE functions
