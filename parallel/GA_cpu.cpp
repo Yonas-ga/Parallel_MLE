@@ -88,7 +88,7 @@ void compute_parallel(const vector<Data_struct>& data, const vector<double>& the
     // add all the partial gradients into one
     for (int t = 0; t < T; t++) {
         for (int k = 0; k < P; k++) {
-            gradient[k] = gradient[k] + partial_grad[t][k];
+            gradient[k] += partial_grad[t][k]/N;
         }
     }
 }
@@ -121,7 +121,7 @@ pair<vector<double>, bool> gradient_ascent_cpu(vector<double>& theta, vector<Dat
             return pair(theta,true);
         }
         for (size_t j=0; j<theta.size();j++){
-            theta[j] += step*g[j]/N;
+            theta[j] += step*g[j];
         }
     }
     std::cout<<"max_iter = "<< max_iter << " reached!"<< std::endl;
