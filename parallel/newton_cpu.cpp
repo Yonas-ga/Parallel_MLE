@@ -109,13 +109,13 @@ void compute_parallel(const vector<Data_struct>& data, const vector<double>& the
     // add all the partial gradients into one
     for (int t = 0; t < T; t++) {
         for (int k = 0; k < P; k++) {
-            gradient[k] = gradient[k] + partial_grad[t][k];
+            gradient[k] += partial_grad[t][k]/N;
         }
     }
     // add all the partial hessians into one
     for (int t = 0; t < T; t++) {
         for (int k = 0; k < P * P; k++) {
-            H[k] = H[k] + partial_H[t][k];
+            H[k] +=  partial_H[t][k]/N;
         }
     }
 }
@@ -129,7 +129,7 @@ pair<vector<double>, bool> Newton_ascent_cpu(vector<double>& theta, vector<Data_
         vector<double> H(p*(d-1)*p*(d-1), 0.0);
         compute_parallel(data, theta, T, g, H, p,d);
 
-        if (verbose)  std::cout<<"||Gradient|| = "<< sqrt(dot(g,g)) << std::endl;
+        if (verbose)  std::cout<<"||Gradient_CPU|| = "<< sqrt(dot(g,g)) << std::endl;
 
         
         if (sqrt(dot(g,g)) <eps) {
@@ -152,7 +152,7 @@ pair<vector<double>, bool> Newton_ascent_cpu(vector<double>& theta, vector<Data_
         delta = solve(H, g, d,p);
         if (delta.empty()){
             for (size_t j=0; j<theta.size();j++){
-                theta[j] += step*g[j]/N;
+                theta[j] += step*g[j];
             }
         }
         else {

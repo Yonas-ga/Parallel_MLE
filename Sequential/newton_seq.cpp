@@ -149,7 +149,7 @@ std::pair<Vector, bool> Newton_ascent(Vector& theta, Data_vect& data, int d, int
     int N = data.size();
     for (int i=0; i<max_iter;i++){
         Loss_Function_h tmp = Multinomial_logit_Newton(theta,data,d,p);
-        if (verbose)  std::cout<<"||Gradient|| = "<< sqrt(dot(tmp.gradient,tmp.gradient)) << std::endl;
+        if (verbose)  std::cout<<"||Gradient_SEQ|| = "<< sqrt(dot(tmp.gradient,tmp.gradient)) << std::endl;
 
         
         if (sqrt(dot(tmp.gradient,tmp.gradient)) <eps) {

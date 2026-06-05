@@ -44,3 +44,4 @@ std::pair<std::vector<double>, bool> gradient_ascent_cpu(std::vector<double>& th
 std::pair<std::vector<double>, bool> Newton_ascent_cpu(std::vector<double>& theta, std::vector<Data_struct>& data, int T, int d, int p, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3);
 
 std::pair<Vector, bool> gradient_ascent_gpu(Vector& theta, Data_vect& data, int d, int p, double step=0.07,  int max_iter=1e4, double eps=1e-3);
+std::pair<Vector, bool> Newton_ascent_gpu(Vector& theta, Data_vect& data, int d, int p, double step=0.07,  int max_iter=1e4, double eps=1e-3);

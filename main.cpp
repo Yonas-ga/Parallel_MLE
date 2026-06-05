@@ -444,9 +444,83 @@ void test_all_gradient() {
     std::cout << "GPU converged = " << res_gpu.second << std::endl;
 }
 
+void test_all_newton(){
+    srand(42);
+
+    int N = 10000;
+    int p = 7;
+    int d = 6;
+
+    Vector true_theta((d - 1) * p, 0.0);
+    Vector x(p, 0.0);
+    Data_vect data_mle;
+    for (int i = 0; i < p*(d-1); i++) {
+        true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int k = 0; k<p-1; k++) {
+            x[k] = (rand() % 2000 - 1000) / 1000.0;
+        }
+        x[p-1] = 1.0;
+
+        std::vector<double> score(d, 0.0);
+        double denom = 1.0; 
+
+        for (int j = 0; j < d-1; j++) {
+            for (int k = 0; k < p; k++) {
+                score[j] += x[k] * true_theta[j*p + k];
+            }
+        denom += exp(score[j]);
+        }
+
+        std::vector<double> prob(d, 0.0);
+        double cumulative = 0.0;
+
+        for (int j = 0; j < d-1; j++) {
+            prob[j] = exp(score[j]) / denom;
+        }
+        prob[d-1] = 1.0 / denom;
+
+        double u = rand() / (double)RAND_MAX;
+
+        int outcome = d-1;
+        cumulative = 0.0;
+
+        for (int j = 0; j < d; j++) {
+            cumulative += prob[j];
+            if (u < cumulative) {
+                outcome = j;
+                break;
+            }
+        }
+        data_mle.push_back({outcome, x});
+    }
+    Vector theta_seq((d - 1) * p, 0.0);
+    Vector theta_cpu((d - 1) * p, 0.0);
+    Vector theta_gpu((d - 1) * p, 0.0);
+    int number_threads = 4;
+    auto res_cpu = Newton_ascent_cpu(theta_cpu, data_mle, number_threads, d, p);
+    auto res_gpu = Newton_ascent_gpu(theta_gpu, data_mle, d, p);
+    auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
+
+    Vector result_seq = res_seq.first;
+    Vector result_cpu = res_cpu.first;
+    Vector result_gpu = res_gpu.first;
+    std::cout << "\nSEQ vs CPU vs GPU result comparison:\n";
+
+    for (int i = 0; i < (d - 1) * p; i++) {
+        std::cout << "theta[" << i << "] " <<"Seq = "<<result_seq[i]<< " CPU = " << result_cpu[i] << " GPU = " << result_gpu[i] << std::endl;
+    }
+    std::cout << "Seq converged = " << res_seq.second << std::endl;
+    std::cout << "CPU converged = " << res_cpu.second << std::endl;
+    std::cout << "GPU converged = " << res_gpu.second << std::endl;
+}
+
 int main(){
-    //compare_seq();
+    //compare_sq();
     //compare_parallel();
-    test_all_gradient();
+    //test_all_gradient();
+    test_all_newton();
     return 0;
 } //Main pipeline

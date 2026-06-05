@@ -101,7 +101,7 @@ pair<vector<double>, bool> gradient_ascent_cpu(vector<double>& theta, vector<Dat
         vector<double> g(p*(d-1), 0.0);
         compute_parallel(data, theta, T, g, p,d);
 
-        if (verbose)  std::cout<<"||Gradient|| = "<< sqrt(dot(g,g)) << std::endl;
+        if (verbose)  std::cout<<"||Gradient_CPU|| = "<< sqrt(dot(g,g)) << std::endl;
 
         
         if (sqrt(dot(g,g)) <eps) {
