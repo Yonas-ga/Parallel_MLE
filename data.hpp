@@ -35,6 +35,8 @@ Data_vect read_data(const std::string& filename); // Temporary, will probably re
 
 double dot(Vector& a, Vector& b);
 
+Vector solve(Vector& H, Vector& gradient, int d, int p);
+
 std::pair<Vector, bool> gradient_ascent(Vector& theta, Data_vect& data, int d, int p, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3);
 std::pair<Vector, bool> Newton_ascent(Vector& theta, Data_vect& data, int d, int p, bool verbose = true, double step=0.07,  int max_iter=1e6, double eps=1e-3);
 

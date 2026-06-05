@@ -9,7 +9,7 @@
 // Helper Functions
 
 
-Vector solve_seq(Vector& H, Vector& gradient, int d, int p){
+Vector solve(Vector& H, Vector& gradient, int d, int p){
     /// delta = solve (H * delta  = gradient);
     //      solve L x (L.T x delta) =: L x y = gradient
     // 1. Find L (lower matrix) s.t L x L.T = H
@@ -169,7 +169,7 @@ std::pair<Vector, bool> Newton_ascent(Vector& theta, Data_vect& data, int d, int
             return std::pair(theta,true);
         }
         Vector delta(theta.size(), 0.0);
-        delta = solve_seq (tmp.H, tmp.gradient, d,p);
+        delta = solve(tmp.H, tmp.gradient, d,p);
         if (delta.empty()){
             for (size_t j=0; j<theta.size();j++){
                 theta[j] += step*tmp.gradient[j];
