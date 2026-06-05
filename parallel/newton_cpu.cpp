@@ -9,66 +9,6 @@
 using namespace std;
 #include "../data.hpp"
 
-vector<double> solve_cpu(vector<double>& H, vector<double>& gradient, int d, int p){
-    /// delta = solve (H * delta  = gradient);
-    //      solve L x (L.T x delta) =: L x y = gradient
-    // 1. Find L (lower matrix) s.t L x L.T = H
-    //      H needs to be positive definite (could imporve by putting a plan B)
-    // 2. Find y (vector) s.t. L x y = gradient
-    // 3. Find delta (vector) s.t. (L.T x delta) = y
-
-    // 1. Finding L
-    int n = p*(d-1);
-    vector<double> L(H.size(),0.0);
-    // For all   j, L[j][j] = sqrt(H[j][j] - Sum_{0<k<n+1} L[j][k]*L[j][k])
-    // For all i,j, L[i][j] = (H[i][j] - Sum_{0<k<j} L[i][k] L[j][k])/ L[j][j]
-
-    for (size_t j = 0; j < n; ++j){
-        double Sum_for_jj = 0.0;
-        for (size_t k = 0; k < j; ++k){
-            Sum_for_jj += L[j*n + k]*L[j*n + k];
-        }
-
-        if (H[j*n+j] - Sum_for_jj < 0){
-            std::cout<< "Hessian NOT Negative"  << std::endl;
-            return vector<double>{};
-        }
-        L[j*n + j] = sqrt(H[j*n+j] - Sum_for_jj);
-
-        for (size_t i = j+1; i < n; ++i){
-            double Sum_for_ij = 0.0;
-            for (size_t k = 0; k < j; ++k){
-                Sum_for_ij += L[i*n + k]*L[j*n + k];
-            }
-            L[i*n + j] += (H[i*n + j] - Sum_for_ij)/L[j*n+j];
-        }
-    }
-
-    // 2. Finding y 
-    vector<double> y(gradient.size(),0.0);
-    // for all i, y[i] = (gradient[k] - Sum_{0<k<i-1} L[i][k] y[k])/L[i][i]
-    for (size_t i = 0; i < n; ++i){
-            double Sum_for_i = 0.0;
-            for (size_t k = 0; k < i; ++k){
-                Sum_for_i += L[i*n + k]*y[k];
-            }
-            y[i] = (gradient[i] - Sum_for_i)/L[i*n+i];
-        }
-
-    // 2. Finding delta
-    vector<double> delta(gradient.size(),0.0);
-    // for all i, delta[i] = (y[k] - Sum_{0<k<i-1} L[k][i] delta[k])/L[i][i]
-    for (int i = n-1; i >= 0; --i){
-        double Sum_for_i = 0.0;
-        for (size_t k = i+1; k < n; ++k){
-            Sum_for_i += L[k*n + i] * delta[k];
-        }
-        delta[i] = (y[i] - Sum_for_i)/L[i*n+i];
-    }
-
-    return delta;
-}
-
 // takes one family and adds its part to gradient and hessian
 void add_one_family(const Data_struct& fam, const vector<double>& theta,
                     vector<double>& gradient, vector<double>& H, int p, int d) {
@@ -209,7 +149,7 @@ pair<vector<double>, bool> Newton_ascent_cpu(vector<double>& theta, vector<Data_
             return pair(theta,true);
         }
         vector<double> delta(theta.size(), 0.0);
-        delta = solve_cpu (H, g, d,p);
+        delta = solve(H, g, d,p);
         if (delta.empty()){
             for (size_t j=0; j<theta.size();j++){
                 theta[j] += step*g[j]/N;
