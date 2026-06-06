@@ -63,9 +63,6 @@ std::pair<Data_vect,Vector> create_data(int N, int p, int d){
 void compare_seq(const char* csvname, int N_max, int N_min, int d_min, int d_max, int N_resolution = 5000){
 
     std::ofstream csv(csvname);
-void compare_seq(const char* csvname, int N_max, int N_min, int d_min, int d_max, int N_resolution = 5000){
-
-    std::ofstream csv(csvname);
 
     // Header
     csv << "N,p,d,"
@@ -148,7 +145,7 @@ void compare_seq(const char* csvname, int N_max, int N_min, int d_min, int d_max
 }
 
 
-void compare_parallel() {
+void compare_parallel_cpu(const char* csvname, int N_max, int N_min, int d_min, int d_max, int T_min, int T_max, int N_resolution = 5000) {
     // int N = 1000000;   // a lot of families so the threads have work to do
     // int P = p * (d - 1);
 
