@@ -6,7 +6,8 @@ To do so we implemented Gradient Ascent and Gradient Ascent using Newton's metho
 
 ## Software
 
-- NVIDIA GPU version -arch=sm_60
+- NVIDIA GPU
+- Pandas and scikit python libraries
 
 # Project Structure
 ```
