@@ -634,6 +634,18 @@ void tune_hyper_GPU(){
         }
     }
     std::cout << "Best time was for box_size = "<< least.first<< " and block_size = "<<least.second <<"\n";
+} // We have gotten: Best time was for box_size = 3 and block_size = 8. 
+
+void recreate_paper(){
+    int d=5;
+    int p=5;
+    Data_vect data_mle = read_data();
+    Vector theta_seq((d - 1) * p, 0.0);
+    auto res_seq = gradient_ascent(theta_seq,data_mle,d,p);
+    Vector result = res_seq.first;
+    for (int i = 0; i < (d - 1) * p; i++) {
+        std::cout << result[i] << std::endl;
+    }
 }
 
 int main(){
@@ -641,6 +653,7 @@ int main(){
     //compare_parallel();
     //test_all_gradient();
     //test_all_newton();
-    tune_hyper_GPU();
+    //tune_hyper_GPU();
+    recreate_paper();
     return 0;
 } //Main pipeline
