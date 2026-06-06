@@ -60,49 +60,9 @@ std::pair<Data_vect,Vector> create_data(int N, int p, int d){
     return res;
 }
 
-void compare_seq(){
-    srand(42);
-    // int N; // Number of observations
-    // int d = 5; // Number of possible outcomes including base
-    // int p = 3; // Number of features
+void compare_seq(const char* csvname, int N_max, int N_min, int d_min, int d_max, int N_resolution = 5000){
 
-
-    // Testing Khaled's sequential MLE
-    // Vector theta_mle ((d-1)*p, 0.0);
-    // True theta: beta_1=[1.0,-1.0], beta_2=[-1.0,1.0], beta_3=[0,0] (baseline)
-    // k=2 features, d=3 alternatives
-    // std::vector<Data_struct> data_paper = read_data("Data/FAM1968_parsed_full.csv");
-    // std::vector<Data_struct> data_mle;
-    // for (int i = 0; i < 100; i++) {
-    //     double x1 = (rand() % 2000 - 1000) / 1000.0;
-    //     double x2 = (rand() % 2000 - 1000) / 1000.0;
-    //     double x3 = (rand() % 2000 - 1000) / 1000.0;
-    //     double x4 = (rand() % 2000 - 1000) / 1000.0;
-    //     double x5 = 1.0;
-
-    //     int outcome;
-
-    //     double s0 = 2*x1 - x2;
-    //     double s1 = -x1 + 2*x2;
-    //     double s2 = x3;
-    //     double s3 = -x4;
-
-    //     if (s0 >= s1 && s0 >= s2 && s0 >= s3 && s0 >= 0){
-    //         outcome = 0;
-    //     } else if (s1 >= s2 && s1 >= s3 && s1 >= 0){
-    //         outcome = 1;
-    //     } else if (s2 >= s3 && s2 >= 0){
-    //         outcome = 2;
-    //     } else if (s3 >= 0){
-    //         outcome = 3;
-    //     } else{
-    //         outcome = 4; 
-    //     }
-    //     //data_mle.push_back({outcome, {x1,x2,x3,x4,x5}});
-    // }
-
-    // After the results vector is populated:
-    std::ofstream csv("results.csv");
+    std::ofstream csv(csvname);
 
     // Header
     csv << "N,p,d,"
@@ -112,13 +72,12 @@ void compare_seq(){
         << "mean_error_h_g, converged_h, converged_g\n";
 
     int p = 5;
-        for (int d = 2; d<3; d++) { /// theta_0 needs to be fixed regardless of sample size
-            int N_max = 30 * 5000;
+        for (int d = d_min; d<d_max; d++) { /// theta_0 needs to be fixed regardless of sample size
             auto res = create_data(N_max, p, d);
             Data_vect data_full = res.first;
             Vector true_theta = res.second;
-            for (int n0 = 1; n0 < 31; n0++) {
-                int N = 5000*n0;
+            for (int n0 = N_min/N_resolution; n0 < N_max/N_resolution; n0++) {
+                int N = N_resolution*n0;
 
                 // Slice: first N observations of the full dataset
                 Data_vect data_mle(data_full.begin(), data_full.begin() + N);                
@@ -186,81 +145,10 @@ void compare_seq(){
 }
 
 
-void compare_parallel() {
-    // int N = 1000000;   // a lot of families so the threads have work to do
-    // int P = p * (d - 1);
-
-    // // make random families
-    // vector<Data_struct> data(N);
-    // for (int i = 0; i < N; i++) {
-    //     data[i].outcome = rand() % d;
-    //     data[i].x.resize(p);
-    //     for (int k = 0; k < p - 1; k++) {
-    //         data[i].x[k] = (rand() % 2000 - 1000) / 1000.0;
-    //     }
-    //     data[i].x[p - 1] = 1.0;
-    // }
-
-    // vector<double> theta(P, 0.0);
-
-    // // sequential, timed
-    // vector<double> g_seq(P, 0.0);
-    // vector<double> H_seq(P * P, 0.0);
-    // auto t0 = chrono::steady_clock::now();
-    // compute_sequential(data, theta, g_seq, H_seq);
-    // auto t1 = chrono::steady_clock::now();
-    // double seq_time = chrono::duration<double>(t1 - t0).count();
-    // cout << "sequential: " << seq_time << " s" << endl;
-
-    // // parallel for 1, 2, 3, 4 threads
-    // for (int T = 1; T <= 4; T++) {
-    //     vector<double> g_par(P, 0.0);
-    //     vector<double> H_par(P * P, 0.0);
-
-    //     auto a = chrono::steady_clock::now();
-    //     compute_parallel(data, theta, T, g_par, H_par);
-    //     auto b = chrono::steady_clock::now();
-    //     double par_time = chrono::duration<double>(b - a).count();
-
-    //     // biggest difference in the gradient
-    //     double diff_g = 0.0;
-    //     for (int k = 0; k < P; k++) {
-    //         double diff = fabs(g_seq[k] - g_par[k]);
-    //         if (diff > diff_g) {
-    //             diff_g = diff;
-    //         }
-    //     }
-
-    //     // biggest difference in the hessian
-    //     double diff_H = 0.0;
-    //     for (int k = 0; k < P * P; k++) {
-    //         double diff = fabs(H_seq[k] - H_par[k]);
-    //         if (diff > diff_H) {
-    //             diff_H = diff;
-    //         }
-    //     }
-
-    //     // how big are the hessian numbers themselves
-    //     double biggest_H = 0.0;
-    //     for (int k = 0; k < P * P; k++) {
-    //         if (fabs(H_seq[k]) > biggest_H) {
-    //             biggest_H = fabs(H_seq[k]);
-    //         }
-    //     }
-
-    //     cout << T << " threads: " << par_time << " s";
-    //     cout << " speedup: " << seq_time / par_time;
-
-    //     if (diff_g < 1e-6 && diff_H < biggest_H * 1e-8) {
-    //         cout << " match: YES" << endl;
-    //     } else {
-    //         cout << " match: NO" << endl;
-    //     }
-    // }
-    // return 0;
-
+void compare_parallel_cpu(const char* csvname, int N_max, int N_min, int d_min, int d_max, int T_min, int T_max, int N_resolution = 5000) {
+   
     // After the results vector is populated:
-    std::ofstream csv("Parralel results.csv");
+    std::ofstream csv(csvname);
 
         csv << "N,T,p,d,"
         << "runtime_h_us,runtime_g_us,"
@@ -269,14 +157,14 @@ void compare_parallel() {
         << "mean_error_h_g, converged_h, converged_g\n";
 
     int p = 5;
-    for (int d = 2; d<3; d++) {
-        int N_max = 30 * 5000;
+    for (int d = d_min; d<d_max; d++) {
+        int N_max = N_resolution;
         auto res = create_data(N_max, p, d);
         Data_vect data_full = res.first;
         Vector true_theta = res.second;
-        for (int T = 2; T<10; T++){
-            for (int n0 = 1; n0 < 31; n0++) {
-                int N = 5000*n0;
+        for (int T = T_min; T<T_max; T++){
+            for (int n0 = N_min/N_resolution; N_max/N_resolution < 3; n0++) {
+                int N = N_resolution*n0;
 
                 // Slice: first N observations of the full dataset
                 Data_vect data_mle(data_full.begin(), data_full.begin() + N);  
@@ -285,7 +173,7 @@ void compare_parallel() {
                 Vector theta_mle_g(p*(d-1), 0.0);
 
                 auto start_h = std::chrono::high_resolution_clock::now();
-                auto tmp_h = Newton_ascent_cpu_lazy(theta_mle_h, data_mle, T, d, p, false); 
+                auto tmp_h = Newton_ascent_cpu_cv(theta_mle_h, data_mle, T, d, p, false); 
                 auto end_h = std::chrono::high_resolution_clock::now();
                 
                 Vector result_mle_h = tmp_h.first;
@@ -293,8 +181,7 @@ void compare_parallel() {
                 bool cvg_h = tmp_h.second;
 
                 auto start_g = std::chrono::high_resolution_clock::now();
-                auto tmp_g = gradient_ascent_cpu_lazy(theta_mle_g, data_mle, T, d, p, false);
-
+                auto tmp_g = gradient_ascent_cpu_cv(theta_mle_g, data_mle, T, d, p, false);
                 auto end_g = std::chrono::high_resolution_clock::now();
                 
                 Vector result_mle_g = tmp_g.first;
@@ -346,6 +233,93 @@ void compare_parallel() {
     csv.close();
     std::cout << "Results written to results.csv" << std::endl;
 }
+
+void compare_parallel_gpu(const char* csvname, int N_max, int N_min, int d_min, int d_max, int N_resolution = 5000) {
+   
+    // After the results vector is populated:
+    std::ofstream csv(csvname);
+
+        csv << "N,p,d,"
+        << "runtime_h_us,runtime_g_us,"
+        << "mean_error_h,max_error_h,"
+        << "mean_error_g,max_error_g,"
+        << "mean_error_h_g, converged_h, converged_g\n";
+
+    int p = 5;
+    for (int d = d_min; d<d_max; d++) {
+        int N_max = N_resolution;
+        auto res = create_data(N_max, p, d);
+        Data_vect data_full = res.first;
+        Vector true_theta = res.second;
+        for (int n0 = N_min/N_resolution; N_max/N_resolution < 3; n0++) {
+            int N = N_resolution*n0;
+
+            // Slice: first N observations of the full dataset
+            Data_vect data_mle(data_full.begin(), data_full.begin() + N);  
+
+            Vector theta_mle_h(p*(d-1), 0.0);
+            Vector theta_mle_g(p*(d-1), 0.0);
+
+            auto start_h = std::chrono::high_resolution_clock::now();
+            auto tmp_h = Newton_ascent_gpu(theta_mle_h, data_mle, d, p, false); 
+            auto end_h = std::chrono::high_resolution_clock::now();
+            
+            Vector result_mle_h = tmp_h.first;
+            auto runtime_h = std::chrono::duration_cast<std::chrono::microseconds>(end_h - start_h);
+            bool cvg_h = tmp_h.second;
+
+            auto start_g = std::chrono::high_resolution_clock::now();
+            auto tmp_g = gradient_ascent_gpu(theta_mle_g, data_mle, d, p, false);
+            auto end_g = std::chrono::high_resolution_clock::now();
+            
+            Vector result_mle_g = tmp_g.first;
+            auto runtime_g = std::chrono::duration_cast<std::chrono::microseconds>(end_g - start_g);
+            bool cvg_g = tmp_g.second;
+
+            Vector errors_h(p*(d-1), 0.0);
+            Vector errors_g(p*(d-1), 0.0);
+            Vector errors_h_g(p*(d-1), 0.0);
+            
+
+            for (int i = 0; i < p*(d-1); i++) {
+                errors_h[i] = std::abs(result_mle_h[i] - true_theta[i]); 
+                errors_g[i] = std::abs(result_mle_g[i] - true_theta[i]); 
+                errors_h_g[i] = std::abs(result_mle_h[i] - result_mle_g[i]); 
+            }
+
+            // Summarize per-parameter errors into mean and max
+            double sum_h = 0.0, max_h = 0.0;
+            double sum_g = 0.0, max_g = 0.0;
+            double sum_h_g = 0.0;
+
+            for (double e : errors_h) { sum_h += e; max_h = std::max(max_h, e); }
+            for (double e : errors_g) { sum_g += e; max_g = std::max(max_g, e); }
+            for (double e : errors_h_g) { sum_h_g += e; }
+
+            int n_params = p * (d - 1);
+            double mean_h = errors_h.empty() ? 0.0 : sum_h / n_params;
+            double mean_g = errors_g.empty() ? 0.0 : sum_g / n_params;
+            double mean_h_g = errors_h.empty()&& errors_g.empty() ? 0.0 : sum_h_g / n_params;
+
+            csv << N         << ","
+                << p         << ","
+                << d         << ","
+                << runtime_h.count() << ","
+                << runtime_g.count() << ","
+                << mean_h      << ","
+                << max_h       << ","
+                << mean_g      << ","
+                << max_g       << ","
+                << mean_h_g    << ","
+                << cvg_h       << ","
+                << cvg_g       << "\n";
+            csv.flush(); // ← add this
+        }
+    }
+    csv.close();
+    std::cout << "Results written to results.csv" << std::endl;
+}
+
 
 void test_all_gradient() {
     srand(42);
@@ -541,8 +515,9 @@ void recreate_paper(){
 }
 
 int main(){
-    compare_seq();
-    compare_parallel();
+    //compare_seq("results.csv", 10000, 20000, 2, 11, 10000);
+    //compare_parallel_cpu("Parralel results.csv", 10000, 20000, 2, 11, 1, 10, 10000);
+    compare_parallel_gpu("Parralel results GPU.csv", 5000, 155000, 1, 10);
     //test_all_gradient();
     //test_all_newton();
     //tune_hyper_GPU();
