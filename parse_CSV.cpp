@@ -126,3 +126,25 @@ Data_vect read_data(){
     return entire_data;
 }
 
+
+
+// reads clean_loan.csv
+Data_vect read_loan_data(const std::string& filename) {
+    std::ifstream file(filename);
+    Data_vect data;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) continue;
+        std::stringstream ss(line);
+        std::string cell;
+        std::vector<double> vals;
+        while (std::getline(ss, cell, ',')) vals.push_back(std::stod(cell));
+        Vector x;
+        x.push_back(1.0);
+        for (size_t k = 1; k < vals.size(); ++k) x.push_back(vals[k]);
+        data.push_back({(int)vals[0], x});
+    }
+    return data;
+}
+

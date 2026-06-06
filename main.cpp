@@ -502,22 +502,100 @@ void tune_hyper_GPU(){
     std::cout << "Best time was for box_size = "<< least.first<< " and block_size = "<<least.second <<"\n";
 } // We have gotten: Best time was for box_size = 3 and block_size = 8. 
 
-void recreate_paper(){
-    int d=5;
-    int p=5;
-    Data_vect data_mle = read_data();
-    Vector theta_seq((d - 1) * p, 0.0);
-    auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
-    Vector result = res_seq.first;
-    for (int i = 0; i < (d - 1) * p; i++) {
-        std::cout << result[i] << std::endl;
+// void recreate_paper(){
+//     int d=5;
+//     int p=5;
+//     Data_vect data_mle = read_data();
+//     Vector theta_seq((d - 1) * p, 0.0);
+//     auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
+//     Vector result = res_seq.first;
+//     for (int i = 0; i < (d - 1) * p; i++) {
+//         std::cout << result[i] << std::endl;
+//     }
+// }
+
+// prints time, speedup vs sequential and whether the estimate matches sequential
+void print_result(const std::string& name, Vector& got, Vector& ref, int p,
+                  double sec, double t_seq) {
+    double diff = 0.0;
+    for (int k = 0; k < p; k++) {
+        double dd = std::abs(got[k] - ref[k]);
+        if (dd > diff) diff = dd;
     }
+    std::cout << name << ": " << sec << " s   speedup " << t_seq / sec  << "   max diff vs seq = " << diff << "\n";
+}
+
+void loan() {
+    Data_vect data = read_loan_data("clean_loan.csv");
+    int d = 2;
+    int p = data[0].x.size();
+    std::cout << "loaded " << data.size() << " rows, p = " << p << "\n";
+
+    // sequential Newton which we validate against sklearn
+    Vector theta_seq(p * (d - 1), 0.0);
+    auto a0 = std::chrono::high_resolution_clock::now();
+    auto r_seq = Newton_ascent(theta_seq, data, d, p, true);   // verbose: watch the gradient fall
+    auto a1 = std::chrono::high_resolution_clock::now();
+    double t_seq = std::chrono::duration<double>(a1 - a0).count();
+    std::cout << "\nNewton seq: converged=" << r_seq.second << ", " << t_seq << " s\n";
+    std::cout << "theta (theta[0] should be ~ +2.32, the rest ~ -sklearn):\n";
+    for (int k = 0; k < p; k++) std::cout << "  theta[" << k << "] = " << theta_seq[k] << "\n";
+
+    // same problem on parallel Newton for T = 4
+    int T = 4;
+
+    Vector th_lazy(p * (d - 1), 0.0);
+    auto b0 = std::chrono::high_resolution_clock::now();
+    Newton_ascent_cpu_lazy(th_lazy, data, T, d, p, false);
+    auto b1 = std::chrono::high_resolution_clock::now();
+    print_result("cpu_lazy T=4", th_lazy, theta_seq, p, std::chrono::duration<double>(b1 - b0).count(), t_seq);
+
+    Vector th_cv(p * (d - 1), 0.0);
+    auto c0 = std::chrono::high_resolution_clock::now();
+    Newton_ascent_cpu_cv(th_cv, data, T, d, p, false);
+    auto c1 = std::chrono::high_resolution_clock::now();
+    print_result("cpu_cv   T=4", th_cv, theta_seq, p, std::chrono::duration<double>(c1 - c0).count(), t_seq);
+
+    Vector th_gpu(p * (d - 1), 0.0);
+    auto e0 = std::chrono::high_resolution_clock::now();
+    Newton_ascent_gpu(th_gpu, data, d, p, false);
+    auto e1 = std::chrono::high_resolution_clock::now();
+    print_result("gpu         ", th_gpu, theta_seq, p, std::chrono::duration<double>(e1 - e0).count(), t_seq);
+
+    // GA on the same loan data
+
+    Vector ga_seq(p * (d - 1), 0.0);
+    auto g0 = std::chrono::high_resolution_clock::now();
+    auto r_ga_seq = gradient_ascent(ga_seq, data, d, p, true);
+    auto g1 = std::chrono::high_resolution_clock::now();
+    double t_ga_seq = std::chrono::duration<double>(g1 - g0).count();
+
+    std::cout << "\nGA seq: converged=" << r_ga_seq.second  << ", " << t_ga_seq << " s\n";
+
+    Vector ga_lazy(p * (d - 1), 0.0);
+    auto g2 = std::chrono::high_resolution_clock::now();
+    gradient_ascent_cpu_lazy(ga_lazy, data, T, d, p, false);
+    auto g3 = std::chrono::high_resolution_clock::now();
+    print_result("GA cpu_lazy T=4", ga_lazy, ga_seq, p, std::chrono::duration<double>(g3 - g2).count(), t_ga_seq);
+
+    Vector ga_cv(p * (d - 1), 0.0);
+    auto g4 = std::chrono::high_resolution_clock::now();
+    gradient_ascent_cpu_cv(ga_cv, data, T, d, p, false);
+    auto g5 = std::chrono::high_resolution_clock::now();
+    print_result("GA cpu_cv   T=4", ga_cv, ga_seq, p, std::chrono::duration<double>(g5 - g4).count(), t_ga_seq);
+
+    Vector ga_gpu(p * (d - 1), 0.0);
+    auto g6 = std::chrono::high_resolution_clock::now();
+    gradient_ascent_gpu(ga_gpu, data, d, p, false);
+    auto g7 = std::chrono::high_resolution_clock::now();
+    print_result("GA gpu         ", ga_gpu, ga_seq, p, std::chrono::duration<double>(g7 - g6).count(), t_ga_seq);
 }
 
 int main(){
-    //compare_seq("results.csv", 10000, 20000, 2, 11, 10000);
+    ////compare_seq("results.csv", 10000, 20000, 2, 11, 10000);
     //compare_parallel_cpu("Parralel results.csv", 10000, 20000, 2, 11, 1, 10, 10000);
-    compare_parallel_gpu("Parralel results GPU.csv", 5000, 155000, 1, 10);
+    //compare_parallel_gpu("Parralel results GPU.csv", 5000, 155000, 1, 10);
+    loan();
     //test_all_gradient();
     //test_all_newton();
     //tune_hyper_GPU();

@@ -1,4 +1,7 @@
 #include <chrono>
+#include <vector>
+#include <string>
+
 using Vector = std::vector<double>; // Vector theta will be used as the arguments to optimize
 
 struct Data_struct { // Tentative data structure, will be properly defined later 
@@ -32,6 +35,8 @@ struct SimulationResult {
 };
 
 Data_vect read_data(); 
+
+Data_vect read_loan_data(const std::string& filename);
 
 double dot(Vector& a, Vector& b);
 
