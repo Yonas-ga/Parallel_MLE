@@ -48,8 +48,8 @@ Data_vect read_data(){
         std::getline(file, line); // first line with V...
         std::map<std::string,int> collumn;
         auto row = split_csv_line(line);
-        for (int i = 0; i < (int)row.size(); ++i) {
-            collumn[row[i]] = i;
+        for (int j = 0; j < (int)row.size(); ++j) {
+            collumn[row[j]] = j;
         }
 
         while (std::getline(file, line)){ //for each row
@@ -66,9 +66,9 @@ Data_vect read_data(){
             double wife_hour_work = std::stod(row[collumn[_wife_hour_work[i]]]);
             int outcome;
             if (head_race==1){
-                head_race=1; //white
+                head_race=0; //white
             } else{
-                head_race=2;//black/non-white
+                head_race=1;//black/non-white
             }
 
             if (head_sex==1 && wife_age==0){ //if single man, skip
@@ -90,7 +90,13 @@ Data_vect read_data(){
                 }
 
                 Vector data = {1.0, head_age,head_education,head_race, kids};
+                if (outcome==1 && ((double) rand() / (RAND_MAX)) < 0.6){
+
+                } else if (outcome==4 && ((double) rand() / (RAND_MAX)) < 0.5){
+
+                } else {
                 entire_data.push_back({outcome, data});
+                }
             } else{ // head is man, who is married to woman;
                 double married =1;
                 double working;
@@ -101,8 +107,12 @@ Data_vect read_data(){
                     working=0;
                     outcome = 0;
                 }
-                Vector data = {1.0,wife_age, wife_education,head_race,   kids};
-                entire_data.push_back({outcome, data});
+                Vector data = {1.0,wife_age, wife_education,head_race, kids};
+                if(outcome == 0 && ((double) rand() / (RAND_MAX)) < 0.8){
+                } else if (outcome ==2 && ((double) rand() / (RAND_MAX)) < 0.9){
+                } else {
+                    entire_data.push_back({outcome, data});
+                }
             }
         }
     }

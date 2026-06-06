@@ -641,7 +641,7 @@ void recreate_paper(){
     int p=5;
     Data_vect data_mle = read_data();
     Vector theta_seq((d - 1) * p, 0.0);
-    auto res_seq = gradient_ascent(theta_seq,data_mle,d,p);
+    auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
     Vector result = res_seq.first;
     for (int i = 0; i < (d - 1) * p; i++) {
         std::cout << result[i] << std::endl;
