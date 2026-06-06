@@ -125,7 +125,7 @@ pair<vector<double>, bool> gradient_ascent_cpu_cv(vector<double>& theta, vector<
 
         
         if (sqrt(dot(g,g)) <eps) {
-            std::cout<<"eps = "<< eps << " reached!"<< std::endl;
+            if (verbose) std::cout<<"eps = "<< eps << " reached!"<< std::endl;
             {
                 lock_guard<mutex> lock(mtx);
                 converged = true;

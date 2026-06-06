@@ -576,17 +576,65 @@ void tune_hyper_GPU(){
     std::cout << "Best time was for box_size = "<< least.first<< " and block_size = "<<least.second <<"\n";
 } // We have gotten: Best time was for box_size = 3 and block_size = 8. 
 
-// void recreate_paper(){
-//     int d=5;
-//     int p=5;
-//     Data_vect data_mle = read_data();
-//     Vector theta_seq((d - 1) * p, 0.0);
-//     auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
-//     Vector result = res_seq.first;
-//     for (int i = 0; i < (d - 1) * p; i++) {
-//         std::cout << result[i] << std::endl;
-//     }
-// }
+void compare_CPU_lazy_CV(){
+    int T_[3] = {2, 4, 8};
+    int p_[3] = {2, 5, 15};
+    int d_[2] = {2, 4};
+    int N_[5] = {1000, 5000, 10000, 50000, 100000};
+    for (int T:T_){
+        for (int d :d_){
+            for(int p : p_){
+                for (int N:N_){
+                    auto res = create_data(N, p, d);
+                    Data_vect data_mle = res.first;
+                    Vector theta_mle_h(p*(d-1), 0.0);
+                    Vector theta_mle_g(p*(d-1), 0.0);
+
+                    auto start_h = std::chrono::high_resolution_clock::now();
+                    auto tmp_h = Newton_ascent_cpu_lazy(theta_mle_h, data_mle, T, d, p, false); 
+                    auto end_h = std::chrono::high_resolution_clock::now();
+                    Vector result_mle_h = tmp_h.first;
+                    auto runtime_h = std::chrono::duration<double>(end_h - start_h).count();
+
+                    auto start_g = std::chrono::high_resolution_clock::now();
+                    auto tmp_g = gradient_ascent_cpu_lazy(theta_mle_g, data_mle, T, d, p, false);
+                    auto end_g = std::chrono::high_resolution_clock::now();
+                    Vector result_mle_g = tmp_g.first;
+                    auto runtime_g = std::chrono::duration<double>(end_g - start_g).count();
+
+                    Vector theta_mle_h_cv(p*(d-1), 0.0);
+                    Vector theta_mle_g_cv(p*(d-1), 0.0);
+
+                    auto start_h_cv = std::chrono::high_resolution_clock::now();
+                    auto tmp_h_cv = Newton_ascent_cpu_cv(theta_mle_h_cv, data_mle, T, d, p, false); 
+                    auto end_h_cv = std::chrono::high_resolution_clock::now();
+                    Vector result_mle_h_cv = tmp_h_cv.first;
+                    auto runtime_h_cv = std::chrono::duration<double>(end_h_cv - start_h_cv).count();
+
+                    auto start_g_cv = std::chrono::high_resolution_clock::now();
+                    auto tmp_g_cv = gradient_ascent_cpu_cv(theta_mle_g_cv, data_mle, T, d, p, false);
+                    auto end_g_cv = std::chrono::high_resolution_clock::now();
+                    Vector result_mle_g_cv = tmp_g_cv.first;
+                    auto runtime_g_cv = std::chrono::duration<double>(end_g_cv - start_g_cv).count();
+
+                    std::cout << "For T="<<T<<" N="<<N<<", d=" << d << ", p="<<p<<" we get CPU_lazy takes"<<runtime_g<<"s for gradient and "<< runtime_h <<"s for hessian. CPU_cv takes" <<runtime_g_cv<<"s for gradient and "<< runtime_h_cv <<"s\n";
+                }
+            }
+        }
+    }
+}
+
+void recreate_paper(){
+    int d=5;
+    int p=5;
+    Data_vect data_mle = read_data();
+    Vector theta_seq((d - 1) * p, 0.0);
+    auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
+    Vector result = res_seq.first;
+    for (int i = 0; i < (d - 1) * p; i++) {
+        std::cout << result[i] << std::endl;
+    }
+}
 
 // prints time, speedup vs sequential and whether the estimate matches sequential
 void print_result(const std::string& name, Vector& got, Vector& ref, int p,

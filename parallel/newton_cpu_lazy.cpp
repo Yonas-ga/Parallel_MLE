@@ -133,7 +133,7 @@ pair<vector<double>, bool> Newton_ascent_cpu_lazy(vector<double>& theta, vector<
 
         
         if (sqrt(dot(g,g)) <eps) {
-            std::cout<<"eps = "<< eps << " reached!"<< std::endl;
+            if (verbose) std::cout<<"eps = "<< eps << " reached!"<< std::endl;
             return pair(theta,true);
         }
         vector<double> delta(theta.size(), 0.0);

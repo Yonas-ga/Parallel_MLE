@@ -155,7 +155,7 @@ pair<vector<double>, bool> Newton_ascent_cpu_cv(vector<double>& theta, vector<Da
         if (verbose)  std::cout<<"||Gradient_CPU_cv|| = "<< sqrt(dot(g,g)) << std::endl;
 
         
-        if (sqrt(dot(g,g)) <eps) {
+        if (verbose) if (sqrt(dot(g,g)) <eps) {
             std::cout<<"eps = "<< eps << " reached!"<< std::endl;
             {
                 lock_guard<mutex> lock(mtx);

@@ -105,7 +105,7 @@ pair<vector<double>, bool> gradient_ascent_cpu_lazy(vector<double>& theta, vecto
 
         
         if (sqrt(dot(g,g)) <eps) {
-            std::cout<<"eps = "<< eps << " reached!"<< std::endl;
+            if (verbose) std::cout<<"eps = "<< eps << " reached!"<< std::endl;
             return pair(theta,true);
         }
         for (size_t j=0; j<theta.size();j++){
