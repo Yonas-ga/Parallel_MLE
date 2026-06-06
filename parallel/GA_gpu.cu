@@ -52,7 +52,7 @@ void gradient_aux( double* X , int* y , double* theta, double* gradient, int N, 
         }
     }
     for(int q=0;q<(p*(d-1));q++){
-        atomicAdd(&gradient[q], tmp_gradient[q]);
+        atomicAdd((double*)(&gradient[q]), (double)tmp_gradient[q]);
     }
 }
 

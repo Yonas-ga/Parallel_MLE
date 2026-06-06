@@ -8,12 +8,12 @@
 #include <numeric>   // for std::accumulate
 #include "data.hpp"
 
-Data_vect create_data(int N, int p, int d){
+std::pair<Data_vect,Vector> create_data(int N, int p, int d){
     Vector true_theta((d - 1) * p, 0.0);
     Vector x(p, 0.0);
     Data_vect data_mle;
     for (int i = 0; i < p*(d-1); i++) {
-        true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
+        true_theta[i] = (rand() % 2000 - 1000) / 1000.0; 
     }
 
     for (int i = 0; i < N; i++) {
@@ -54,7 +54,10 @@ Data_vect create_data(int N, int p, int d){
         }
         data_mle.push_back({outcome, x});
     }
-    return data_mle;
+    std::pair<Data_vect,Vector> res;
+    res.first = data_mle;
+    res.second = true_theta;
+    return res;
 }
 
 void compare_seq(){
@@ -105,64 +108,20 @@ void compare_seq(){
     csv << "N,p,d,"
         << "runtime_h_us,runtime_g_us,"
         << "mean_error_h,max_error_h,"
-        << "mean_error_g,max_error_g, converged_h, converged_g\n";
+        << "mean_error_g,max_error_g,"
+        << "mean_error_h_g, converged_h, converged_g\n";
 
     int p = 5;
-        for (int d = 20; d<40; d++) {
-            for (int n0 = 1; n0 < 2; n0++) {
-                Vector true_theta ((d-1)*p, 0.0);
-                Vector x (p, 0.0);
-                Vector theta_mle ((d-1)*p, 0.0);
-                std::vector<Data_struct> data_mle;
+        for (int d = 2; d<3; d++) { /// theta_0 needs to be fixed regardless of sample size
+            int N_max = 30 * 5000;
+            auto res = create_data(N_max, p, d);
+            Data_vect data_full = res.first;
+            Vector true_theta = res.second;
+            for (int n0 = 1; n0 < 31; n0++) {
+                int N = 5000*n0;
 
-                for (int i = 0; i < p*(d-1); i++) {
-                    true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
-                }
-
-                for (int i = 0; i < 5000*n0; i++) {
-                    for (int k = 0; k<p-1; k++) {
-                        x[k] = (rand() % 2000 - 1000) / 1000.0;
-                    }
-                    x[p-1] = 1.0;
-
-                    std::vector<double> score(d, 0.0);
-                    double denom = 1.0; 
-
-                    for (int j = 0; j < d-1; j++) {
-                        for (int k = 0; k < p; k++) {
-                            score[j] += x[k] * true_theta[j*p + k];
-                        }
-                        denom += exp(score[j]);
-                    }
-
-                    std::vector<double> prob(d, 0.0);
-                    double cumulative = 0.0;
-
-                    for (int j = 0; j < d-1; j++) {
-                        prob[j] = exp(score[j]) / denom;
-                    }
-                    prob[d-1] = 1.0 / denom;
-
-                    double u = rand() / (double)RAND_MAX;
-
-                    int outcome = d-1;
-                    cumulative = 0.0;
-
-                    for (int j = 0; j < d; j++) {
-                        cumulative += prob[j];
-                        if (u < cumulative) {
-                            outcome = j;
-                            break;
-                        }
-                    }
-                    data_mle.push_back({outcome, x});
-                }
-            
-                // Pushing results out
-                SimulationResult res;
-                res.p = p;
-                res.d = d;
-                res.N = 5000*n0;
+                // Slice: first N observations of the full dataset
+                Data_vect data_mle(data_full.begin(), data_full.begin() + N);                
 
                 Vector theta_mle_h(p*(d-1), 0.0);
                 Vector theta_mle_g(p*(d-1), 0.0);
@@ -173,8 +132,7 @@ void compare_seq(){
                 
                 Vector result_mle_h = tmp_h.first;
                 auto runtime_h = std::chrono::duration_cast<std::chrono::microseconds>(end_h - start_h);
-                res.runtime_h = runtime_h;
-                res.cvg_h = tmp_h.second;
+                bool cvg_h = tmp_h.second;
 
                 auto start_g = std::chrono::high_resolution_clock::now();
                 auto tmp_g = gradient_ascent(theta_mle_g, data_mle, d, p, false);
@@ -182,41 +140,44 @@ void compare_seq(){
                 
                 Vector result_mle_g = tmp_g.first;
                 auto runtime_g = std::chrono::duration_cast<std::chrono::microseconds>(end_g - start_g);
-                res.runtime_g = runtime_g;
-                res.cvg_g = tmp_g.second;
+                bool cvg_g = tmp_g.second;
 
                 Vector errors_h(p*(d-1), 0.0);
                 Vector errors_g(p*(d-1), 0.0);
+                Vector errors_h_g(p*(d-1), 0.0);
 
                 for (int i = 0; i < p*(d-1); i++) {
                     errors_h[i] = std::abs(result_mle_h[i] - true_theta[i]); 
                     errors_g[i] = std::abs(result_mle_g[i] - true_theta[i]); 
+                    errors_h_g[i] = std::abs(result_mle_g[i] - result_mle_h[i]); 
                 }
-                res.errors_h = errors_h;
-                res.errors_g = errors_g;
 
                 // Summarize per-parameter errors into mean and max
                 double sum_h = 0.0, max_h = 0.0;
                 double sum_g = 0.0, max_g = 0.0;
+                double sum_h_g = 0.0;
 
-                for (double e : res.errors_h) { sum_h += e; max_h = std::max(max_h, e); }
-                for (double e : res.errors_g) { sum_g += e; max_g = std::max(max_g, e); }
+                for (double e : errors_h) { sum_h += e; max_h = std::max(max_h, e); }
+                for (double e : errors_g) { sum_g += e; max_g = std::max(max_g, e); }
+                for (double e : errors_h_g) { sum_h_g += e; }
 
-                int n_params = res.p * (res.d - 1);
-                double mean_h = res.errors_h.empty() ? 0.0 : sum_h / n_params;
-                double mean_g = res.errors_g.empty() ? 0.0 : sum_g / n_params;
+                int n_params = p * (d - 1);
+                double mean_h = errors_h.empty() ? 0.0 : sum_h / n_params;
+                double mean_g = errors_g.empty() ? 0.0 : sum_g / n_params;
+                double mean_h_g = errors_g.empty() && errors_h.empty() ? 0.0 : sum_h_g / n_params;
 
-                csv << res.N         << ","
-                    << res.p         << ","
-                    << res.d         << ","
-                    << res.runtime_h.count() << ","
-                    << res.runtime_g.count() << ","
+                csv << N         << ","
+                    << p         << ","
+                    << d         << ","
+                    << runtime_h.count() << ","
+                    << runtime_g.count() << ","
                     << mean_h      << ","
                     << max_h       << ","
                     << mean_g      << ","
                     << max_g       << ","
-                    << res.cvg_h      << ","
-                    << res.cvg_g      << "\n";
+                    << mean_h_g    << ","
+                    << cvg_h       << ","
+                    << cvg_g       << "\n";
                 csv.flush(); // ← add this
             }
         }
@@ -304,102 +265,68 @@ void compare_parallel() {
         csv << "N,T,p,d,"
         << "runtime_h_us,runtime_g_us,"
         << "mean_error_h,max_error_h,"
-        << "mean_error_g,max_error_g, converged_h, converged_g\n";
+        << "mean_error_g,max_error_g,"
+        << "mean_error_h_g, converged_h, converged_g\n";
 
     int p = 5;
-    for (int T = 2; T<10; T++){
-        for (int d = 2; d<5; d++) {
-            for (int n0 = 1; n0 < 4; n0++) {
-                std::cout<< "n = " << n0*5000 << " , p*(d-1) = " << p*(d-1) << " , T = " << T << std::endl;
-                std::vector<double> true_theta ((d-1)*p, 0.0);
-                std::vector<double> x (p, 0.0);
-                std::vector<double> theta_mle ((d-1)*p, 0.0);
-                std::vector<Data_struct> data_mle;
+    for (int d = 2; d<3; d++) {
+        int N_max = 30 * 5000;
+        auto res = create_data(N_max, p, d);
+        Data_vect data_full = res.first;
+        Vector true_theta = res.second;
+        for (int T = 2; T<10; T++){
+            for (int n0 = 1; n0 < 31; n0++) {
+                int N = 5000*n0;
 
-                for (int i = 0; i < p*(d-1); i++) {
-                    true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
-                }
+                // Slice: first N observations of the full dataset
+                Data_vect data_mle(data_full.begin(), data_full.begin() + N);  
 
-                for (int i = 0; i < 5000*n0; i++) {
-                    for (int k = 0; k<p-1; k++) {
-                        x[k] = (rand() % 2000 - 1000) / 1000.0;
-                    }
-                    x[p-1] = 1.0;
-
-                    std::vector<double> score(d, 0.0);
-                    double denom = 1.0; 
-
-                    for (int j = 0; j < d-1; j++) {
-                        for (int k = 0; k < p; k++) {
-                            score[j] += x[k] * true_theta[j*p + k];
-                        }
-                        denom += exp(score[j]);
-                    }
-
-                    std::vector<double> prob(d, 0.0);
-                    double cumulative = 0.0;
-
-                    for (int j = 0; j < d-1; j++) {
-                        prob[j] = exp(score[j]) / denom;
-                    }
-                    prob[d-1] = 1.0 / denom;
-
-                    double u = rand() / (double)RAND_MAX;
-
-                    int outcome = d-1;
-                    cumulative = 0.0;
-
-                    for (int j = 0; j < d; j++) {
-                        cumulative += prob[j];
-                        if (u < cumulative) {
-                            outcome = j;
-                            break;
-                        }
-                    }
-                    data_mle.push_back({outcome, x});
-                }
-
-                std::vector<double> theta_mle_h(p*(d-1), 0.0);
-                std::vector<double> theta_mle_g(p*(d-1), 0.0);
+                Vector theta_mle_h(p*(d-1), 0.0);
+                Vector theta_mle_g(p*(d-1), 0.0);
 
                 auto start_h = std::chrono::high_resolution_clock::now();
                 auto tmp_h = Newton_ascent_cpu_lazy(theta_mle_h, data_mle, T, d, p, false); 
                 auto end_h = std::chrono::high_resolution_clock::now();
                 
-                std::vector<double> result_mle_h = tmp_h.first;
+                Vector result_mle_h = tmp_h.first;
                 auto runtime_h = std::chrono::duration_cast<std::chrono::microseconds>(end_h - start_h);
-                runtime_h = runtime_h;
                 bool cvg_h = tmp_h.second;
 
                 auto start_g = std::chrono::high_resolution_clock::now();
                 auto tmp_g = gradient_ascent_cpu_lazy(theta_mle_g, data_mle, T, d, p, false);
+
                 auto end_g = std::chrono::high_resolution_clock::now();
                 
-                std::vector<double> result_mle_g = tmp_g.first;
+                Vector result_mle_g = tmp_g.first;
                 auto runtime_g = std::chrono::duration_cast<std::chrono::microseconds>(end_g - start_g);
-                runtime_g = runtime_g;
                 bool cvg_g = tmp_g.second;
 
-                std::vector<double> errors_h(p*(d-1), 0.0);
-                std::vector<double> errors_g(p*(d-1), 0.0);
+                Vector errors_h(p*(d-1), 0.0);
+                Vector errors_g(p*(d-1), 0.0);
+                Vector errors_h_g(p*(d-1), 0.0);
+                
 
                 for (int i = 0; i < p*(d-1); i++) {
                     errors_h[i] = std::abs(result_mle_h[i] - true_theta[i]); 
                     errors_g[i] = std::abs(result_mle_g[i] - true_theta[i]); 
+                    errors_h_g[i] = std::abs(result_mle_h[i] - result_mle_g[i]); 
                 }
 
                 // Summarize per-parameter errors into mean and max
                 double sum_h = 0.0, max_h = 0.0;
                 double sum_g = 0.0, max_g = 0.0;
+                double sum_h_g = 0.0;
 
                 for (double e : errors_h) { sum_h += e; max_h = std::max(max_h, e); }
                 for (double e : errors_g) { sum_g += e; max_g = std::max(max_g, e); }
+                for (double e : errors_h_g) { sum_h_g += e; }
 
                 int n_params = p * (d - 1);
                 double mean_h = errors_h.empty() ? 0.0 : sum_h / n_params;
                 double mean_g = errors_g.empty() ? 0.0 : sum_g / n_params;
+                double mean_h_g = errors_h.empty()&& errors_g.empty() ? 0.0 : sum_h_g / n_params;
 
-                csv << 5000*n0         << ","
+                csv << N         << ","
                     << T         << ","
                     << p         << ","
                     << d         << ","
@@ -409,13 +336,13 @@ void compare_parallel() {
                     << max_h       << ","
                     << mean_g      << ","
                     << max_g       << ","
-                    << cvg_h      << ","
-                    << cvg_g      << "\n";
+                    << mean_h_g    << ","
+                    << cvg_h       << ","
+                    << cvg_g       << "\n";
                 csv.flush(); // ← add this
             }
         }
     }
-
     csv.close();
     std::cout << "Results written to results.csv" << std::endl;
 }
@@ -426,51 +353,13 @@ void test_all_gradient() {
     int N = 5000;
     int p = 8;
     int d = 7;
-    Vector true_theta((d - 1) * p, 0.0);
-    Vector x(p, 0.0);
-    Data_vect data_mle;
-    for (int i = 0; i < p*(d-1); i++) {
-        true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
-    }
 
-    for (int i = 0; i < N; i++) {
-        for (int k = 0; k<p-1; k++) {
-            x[k] = (rand() % 2000 - 1000) / 1000.0;
-        }
-        x[p-1] = 1.0;
+    auto res = create_data(N, p, d);
 
-        std::vector<double> score(d, 0.0);
-        double denom = 1.0; 
+    Data_vect data_mle = res.first;
+    Vector true_theta = res.second;
 
-        for (int j = 0; j < d-1; j++) {
-            for (int k = 0; k < p; k++) {
-                score[j] += x[k] * true_theta[j*p + k];
-            }
-        denom += exp(score[j]);
-        }
 
-        std::vector<double> prob(d, 0.0);
-        double cumulative = 0.0;
-
-        for (int j = 0; j < d-1; j++) {
-            prob[j] = exp(score[j]) / denom;
-        }
-        prob[d-1] = 1.0 / denom;
-
-        double u = rand() / (double)RAND_MAX;
-
-        int outcome = d-1;
-        cumulative = 0.0;
-
-        for (int j = 0; j < d; j++) {
-            cumulative += prob[j];
-            if (u < cumulative) {
-                outcome = j;
-                break;
-            }
-        }
-        data_mle.push_back({outcome, x});
-    }
     Vector theta_seq((d - 1) * p, 0.0);
     Vector theta_cpu((d - 1) * p, 0.0);
     Vector theta_cpu_cv((d - 1) * p, 0.0);
@@ -615,7 +504,10 @@ void tune_hyper_GPU(){
     int N = 5000;
     int p = 8;
     int d = 7;
-    Data_vect data_mle = create_data(N,p,d);
+    auto res = create_data(N, p, d);
+
+    Data_vect data_mle = res.first;
+    Vector true_theta = res.second;
     int box_sizes[13]= {1,2,3,4,8,12,16,32,64,128,256,512,1024};
     int block_sizes[11] = {1,2,3,4,8,16,32,64,128,256,512};
     for (int box_size : box_sizes){
@@ -649,11 +541,11 @@ void recreate_paper(){
 }
 
 int main(){
-    //compare_sq();
-    //compare_parallel();
+    compare_seq();
+    compare_parallel();
     //test_all_gradient();
     //test_all_newton();
     //tune_hyper_GPU();
-    recreate_paper();
+    //recreate_paper();
     return 0;
 } //Main pipeline
