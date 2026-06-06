@@ -141,7 +141,7 @@ void compare_seq(const char* csvname, int N_max, int N_min, int d_min, int d_max
             }
         }
     csv.close();
-    std::cout << "Results written to results.csv" << std::endl;
+    std::cout << "Results written to "<<csvname << std::endl;
 }
 
 
@@ -234,7 +234,7 @@ void compare_parallel_cpu(const char* csvname, int N_max, int N_min, int d_min, 
         Data_vect data_full = res.first;
         Vector true_theta = res.second;
         for (int T = T_min; T<T_max; T++){
-            for (int n0 = N_min/N_resolution; N_max/N_resolution < 3; n0++) {
+            for (int n0 = N_min/N_resolution; n0 < N_max/N_resolution; n0++) {
                 int N = N_resolution*n0;
 
                 // Slice: first N observations of the full dataset
@@ -302,7 +302,7 @@ void compare_parallel_cpu(const char* csvname, int N_max, int N_min, int d_min, 
         }
     }
     csv.close();
-    std::cout << "Results written to results.csv" << std::endl;
+    std::cout << "Results written to "<<csvname << std::endl;
 }
 
 void compare_parallel_gpu(const char* csvname, int N_max, int N_min, int d_min, int d_max, int N_resolution = 5000) {
@@ -322,7 +322,7 @@ void compare_parallel_gpu(const char* csvname, int N_max, int N_min, int d_min, 
         auto res = create_data(N_max, p, d);
         Data_vect data_full = res.first;
         Vector true_theta = res.second;
-        for (int n0 = N_min/N_resolution; N_max/N_resolution < 3; n0++) {
+        for (int n0 = N_min/N_resolution; n0 < N_max/N_resolution; n0++) {
             int N = N_resolution*n0;
 
             // Slice: first N observations of the full dataset
@@ -388,7 +388,7 @@ void compare_parallel_gpu(const char* csvname, int N_max, int N_min, int d_min, 
         }
     }
     csv.close();
-    std::cout << "Results written to results.csv" << std::endl;
+    std::cout << "Results written to "<<csvname << std::endl;
 }
 
 
@@ -711,12 +711,13 @@ void loan() {
 }
 
 int main(){
-    //compare_seq();
-    //compare_parallel();
-    loan();
+    compare_seq("output_compare_seq.csv", 10000,1000,2,5);
+    //compare_parallel_cpu("output_compare_parallel_cpu.csv", 10000,1000,2,5,2,4);
+    //compare_parallel_gpu("output_compare_parallel_gpu.csv", 10000,1000,2,5);
+    //loan(); // If doing loan, you will need to execute as follows: ./exe | tee smth.txt
     //test_all_gradient();
-    //test_all_newton();
-    //tune_hyper_GPU();
-    //recreate_paper();
+    test_all_newton();
+    //tune_hyper_GPU(); //quite long
+    recreate_paper();
     return 0;
 } //Main pipeline

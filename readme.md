@@ -35,13 +35,17 @@ Main.cpp contains many different functions to test and use all the MLE implement
 
 By changing the calls inside of the "main" function, one can execute any of these function using:
 
-```nvcc -arch=sm_60 main.cpp parse_CSV.cpp parallel/GA_cpu.cpp parallel/newton_cpu.cpp Sequential/GA_seq.cpp Sequential/newton_seq.cpp parallel/GA_gpu.cu -o test```
+```/usr/local/cuda/bin/nvcc -arch=sm_60 main.cpp parse_CSV.cpp parallel/GA_cpu_lazy.cpp parallel/newton_cpu_lazy.cpp Sequential/GA_seq.cpp Sequential/newton_seq.cpp parallel/GA_gpu.cu parallel/newton_gpu.cu parallel/GA_cpu_cv.cpp parallel/newton_cpu_cv.cpp -o test```
+
+You can change "/usr/local/cuda/bin/nvcc" to the location of your nvcc compiler.
 
 To compile, and then 
 
 ```./test```
 
 To execute.
+
+If executing the ```loan()``` function, you will need to run the executable as follows: ```./test | tee smth.txt```.
 
 # Recreate paper
 
