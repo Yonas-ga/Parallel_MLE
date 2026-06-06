@@ -8,6 +8,55 @@
 #include <numeric>   // for std::accumulate
 #include "data.hpp"
 
+Data_vect create_data(int N, int p, int d){
+    Vector true_theta((d - 1) * p, 0.0);
+    Vector x(p, 0.0);
+    Data_vect data_mle;
+    for (int i = 0; i < p*(d-1); i++) {
+        true_theta[i] = (rand() % 2000 - 1000) / 1000.0;  //// Try running less nice true_theta
+    }
+
+    for (int i = 0; i < N; i++) {
+        for (int k = 0; k<p-1; k++) {
+            x[k] = (rand() % 2000 - 1000) / 1000.0;
+        }
+        x[p-1] = 1.0;
+
+        std::vector<double> score(d, 0.0);
+        double denom = 1.0; 
+
+        for (int j = 0; j < d-1; j++) {
+            for (int k = 0; k < p; k++) {
+                score[j] += x[k] * true_theta[j*p + k];
+            }
+        denom += exp(score[j]);
+        }
+
+        std::vector<double> prob(d, 0.0);
+        double cumulative = 0.0;
+
+        for (int j = 0; j < d-1; j++) {
+            prob[j] = exp(score[j]) / denom;
+        }
+        prob[d-1] = 1.0 / denom;
+
+        double u = rand() / (double)RAND_MAX;
+
+        int outcome = d-1;
+        cumulative = 0.0;
+
+        for (int j = 0; j < d; j++) {
+            cumulative += prob[j];
+            if (u < cumulative) {
+                outcome = j;
+                break;
+            }
+        }
+        data_mle.push_back({outcome, x});
+    }
+    return data_mle;
+}
+
 void compare_seq(){
     srand(42);
     // int N; // Number of observations
@@ -314,7 +363,7 @@ void compare_parallel() {
                 std::vector<double> theta_mle_g(p*(d-1), 0.0);
 
                 auto start_h = std::chrono::high_resolution_clock::now();
-                auto tmp_h = Newton_ascent_cpu(theta_mle_h, data_mle, T, d, p, false); 
+                auto tmp_h = Newton_ascent_cpu_lazy(theta_mle_h, data_mle, T, d, p, false); 
                 auto end_h = std::chrono::high_resolution_clock::now();
                 
                 std::vector<double> result_mle_h = tmp_h.first;
@@ -323,7 +372,7 @@ void compare_parallel() {
                 bool cvg_h = tmp_h.second;
 
                 auto start_g = std::chrono::high_resolution_clock::now();
-                auto tmp_g = gradient_ascent_cpu(theta_mle_g, data_mle, T, d, p, false);
+                auto tmp_g = gradient_ascent_cpu_lazy(theta_mle_g, data_mle, T, d, p, false);
                 auto end_g = std::chrono::high_resolution_clock::now();
                 
                 std::vector<double> result_mle_g = tmp_g.first;
@@ -374,10 +423,9 @@ void compare_parallel() {
 void test_all_gradient() {
     srand(42);
 
-    int N = 1000;
-    int p = 5;
-    int d = 4;
-
+    int N = 5000;
+    int p = 8;
+    int d = 7;
     Vector true_theta((d - 1) * p, 0.0);
     Vector x(p, 0.0);
     Data_vect data_mle;
@@ -425,31 +473,53 @@ void test_all_gradient() {
     }
     Vector theta_seq((d - 1) * p, 0.0);
     Vector theta_cpu((d - 1) * p, 0.0);
+    Vector theta_cpu_cv((d - 1) * p, 0.0);
     Vector theta_gpu((d - 1) * p, 0.0);
-    int number_threads = 4;
-    auto res_cpu = gradient_ascent_cpu(theta_cpu, data_mle, number_threads, d, p);
+    int number_threads = 8;
+    auto start_cpu_cv = std::chrono::high_resolution_clock::now();
+    auto res_cpu_cv = gradient_ascent_cpu_cv(theta_cpu_cv, data_mle, number_threads, d, p);
+    auto end_cpu_cv = std::chrono::high_resolution_clock::now();
+    auto start_cpu = std::chrono::high_resolution_clock::now();
+    auto res_cpu = gradient_ascent_cpu_lazy(theta_cpu, data_mle, number_threads, d, p);
+    auto end_cpu = std::chrono::high_resolution_clock::now();
+    auto start_gpu = std::chrono::high_resolution_clock::now();
     auto res_gpu = gradient_ascent_gpu(theta_gpu, data_mle, d, p);
+    auto end_gpu = std::chrono::high_resolution_clock::now();
+    auto start_seq = std::chrono::high_resolution_clock::now();
     auto res_seq = gradient_ascent(theta_seq,data_mle,d,p);
+    auto end_seq = std::chrono::high_resolution_clock::now();
+    
+    double time_seq = std::chrono::duration<double>(end_seq - start_seq).count();
+    double time_cpu = std::chrono::duration<double>(end_cpu - start_cpu).count();
+    double time_cpu_cv = std::chrono::duration<double>(end_cpu_cv - start_cpu_cv).count();
+    double time_gpu = std::chrono::duration<double>(end_gpu - start_gpu).count();
+    std::cout << "\nExecution times:\n";
+    std::cout << "Sequential : " << time_seq << " s\n";
+    std::cout << "CPU Lazy   : " << time_cpu << " s\n";
+    std::cout << "CPU CV     : " << time_cpu_cv << " s\n";
+    std::cout << "GPU        : " << time_gpu << " s\n";
 
     Vector result_seq = res_seq.first;
     Vector result_cpu = res_cpu.first;
+    Vector results_cpu_cv = res_cpu_cv.first;
     Vector result_gpu = res_gpu.first;
-    std::cout << "\nSEQ vs CPU vs GPU result comparison:\n";
+    std::cout << "\nSEQ vs CPU vs CPU_CV vs GPU result comparison:\n";
 
     for (int i = 0; i < (d - 1) * p; i++) {
-        std::cout << "theta[" << i << "] " <<"Seq = "<<result_seq[i]<< " CPU = " << result_cpu[i] << " GPU = " << result_gpu[i] << std::endl;
+        std::cout << "theta[" << i << "] " <<"Seq = "<<result_seq[i]<< " CPU = " << result_cpu[i] << " CPU_cv = "<<results_cpu_cv[i] << " GPU = " << result_gpu[i] << std::endl;
     }
     std::cout << "Seq converged = " << res_seq.second << std::endl;
     std::cout << "CPU converged = " << res_cpu.second << std::endl;
+    std::cout << "CPU_cv converged = " << res_cpu_cv.second << std::endl;
     std::cout << "GPU converged = " << res_gpu.second << std::endl;
 }
 
 void test_all_newton(){
     srand(42);
 
-    int N = 10000;
-    int p = 7;
-    int d = 6;
+    int N = 100000;
+    int p = 10;
+    int d = 9;
 
     Vector true_theta((d - 1) * p, 0.0);
     Vector x(p, 0.0);
@@ -498,29 +568,79 @@ void test_all_newton(){
     }
     Vector theta_seq((d - 1) * p, 0.0);
     Vector theta_cpu((d - 1) * p, 0.0);
+    Vector theta_cpu_cv((d - 1) * p, 0.0);
     Vector theta_gpu((d - 1) * p, 0.0);
-    int number_threads = 4;
-    auto res_cpu = Newton_ascent_cpu(theta_cpu, data_mle, number_threads, d, p);
+    int number_threads = 15;
+    auto start_cpu_cv = std::chrono::high_resolution_clock::now();
+    auto res_cpu_cv = Newton_ascent_cpu_cv(theta_cpu_cv, data_mle, number_threads, d, p);
+    auto end_cpu_cv = std::chrono::high_resolution_clock::now();
+    auto start_cpu = std::chrono::high_resolution_clock::now();
+    auto res_cpu = Newton_ascent_cpu_lazy(theta_cpu, data_mle, number_threads, d, p);
+    auto end_cpu = std::chrono::high_resolution_clock::now();
+    auto start_gpu = std::chrono::high_resolution_clock::now();
     auto res_gpu = Newton_ascent_gpu(theta_gpu, data_mle, d, p);
+    auto end_gpu = std::chrono::high_resolution_clock::now();
+    auto start_seq = std::chrono::high_resolution_clock::now();
     auto res_seq = Newton_ascent(theta_seq,data_mle,d,p);
+    auto end_seq = std::chrono::high_resolution_clock::now();
+    
+    double time_seq = std::chrono::duration<double>(end_seq - start_seq).count();
+    double time_cpu = std::chrono::duration<double>(end_cpu - start_cpu).count();
+    double time_cpu_cv = std::chrono::duration<double>(end_cpu_cv - start_cpu_cv).count();
+    double time_gpu = std::chrono::duration<double>(end_gpu - start_gpu).count();
+    std::cout << "\nExecution times:\n";
+    std::cout << "Sequential : " << time_seq << " s\n";
+    std::cout << "CPU Lazy   : " << time_cpu << " s\n";
+    std::cout << "CPU CV     : " << time_cpu_cv << " s\n";
+    std::cout << "GPU        : " << time_gpu << " s\n";
 
     Vector result_seq = res_seq.first;
     Vector result_cpu = res_cpu.first;
+    Vector results_cpu_cv = res_cpu_cv.first;
     Vector result_gpu = res_gpu.first;
-    std::cout << "\nSEQ vs CPU vs GPU result comparison:\n";
+    std::cout << "\nSEQ vs CPU vs CPU_CV vs GPU result comparison:\n";
 
     for (int i = 0; i < (d - 1) * p; i++) {
-        std::cout << "theta[" << i << "] " <<"Seq = "<<result_seq[i]<< " CPU = " << result_cpu[i] << " GPU = " << result_gpu[i] << std::endl;
+        std::cout << "theta[" << i << "] " <<"Seq = "<<result_seq[i]<< " CPU = " << result_cpu[i] << " CPU_cv = "<<results_cpu_cv[i] << " GPU = " << result_gpu[i] << std::endl;
     }
     std::cout << "Seq converged = " << res_seq.second << std::endl;
     std::cout << "CPU converged = " << res_cpu.second << std::endl;
+    std::cout << "CPU_cv converged = " << res_cpu_cv.second << std::endl;
     std::cout << "GPU converged = " << res_gpu.second << std::endl;
+}
+
+void tune_hyper_GPU(){
+    double least_num = 1000;
+    std::pair<int,int> least= {0,0};
+    int N = 5000;
+    int p = 8;
+    int d = 7;
+    Data_vect data_mle = create_data(N,p,d);
+    int box_sizes[13]= {1,2,3,4,8,12,16,32,64,128,256,512,1024};
+    int block_sizes[11] = {1,2,3,4,8,16,32,64,128,256,512};
+    for (int box_size : box_sizes){
+        for (int block_size : block_sizes){
+            Vector theta_gpu((d - 1) * p, 0.0);
+            auto start_gpu = std::chrono::high_resolution_clock::now();
+            auto res_gpu = gradient_ascent_gpu(theta_gpu, data_mle, d, p,false, box_size, block_size);
+            auto end_gpu = std::chrono::high_resolution_clock::now();
+            double time_gpu = std::chrono::duration<double>(end_gpu - start_gpu).count();
+            if(time_gpu < least_num){
+                least_num = time_gpu;
+                least.first = box_size;
+                least.second=block_size;
+            }
+            std::cout << "GPU  : " << time_gpu << " s   for box_size = "<< box_size << " and block_size = "<<block_size <<"\n";
+        }
+    }
+    std::cout << "Best time was for box_size = "<< least.first<< " and block_size = "<<least.second <<"\n";
 }
 
 int main(){
     //compare_sq();
     //compare_parallel();
     //test_all_gradient();
-    test_all_newton();
+    //test_all_newton();
+    tune_hyper_GPU();
     return 0;
 } //Main pipeline

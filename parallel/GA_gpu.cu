@@ -56,10 +56,8 @@ void gradient_aux( double* X , int* y , double* theta, double* gradient, int N, 
     }
 }
 
-std::pair<Vector, bool> gradient_ascent_gpu(Vector& theta, Data_vect& data, int d, int p, double step,  int max_iter, double eps){
+std::pair<Vector, bool> gradient_ascent_gpu(Vector& theta, Data_vect& data, int d, int p, bool verbose, int box_size, int blockSize, double step,  int max_iter, double eps){
     int N = data.size();
-    int box_size = 8; // Number of data points checked for each thread
-    int blockSize = 256; // TODO: optimize ?
     int numberThreads = (N + box_size - 1) / box_size;
     int gridSize = (numberThreads + blockSize - 1) / blockSize;
     std::vector<double> X(N*p);
@@ -100,7 +98,9 @@ std::pair<Vector, bool> gradient_ascent_gpu(Vector& theta, Data_vect& data, int 
             norm += g*g;
         }
         norm = sqrt(norm);
-        std::cout << "||Gradient_GPU|| = " << norm << std::endl;
+        if (verbose){
+            std::cout << "||Gradient_GPU|| = " << norm << std::endl;
+        }
         if (norm < eps) {
             cudaFree(tmp_X);
             cudaFree(tmp_y);

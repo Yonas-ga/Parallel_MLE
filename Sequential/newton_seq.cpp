@@ -154,18 +154,6 @@ std::pair<Vector, bool> Newton_ascent(Vector& theta, Data_vect& data, int d, int
         
         if (sqrt(dot(tmp.gradient,tmp.gradient)) <eps) {
             std::cout<<"eps = "<< eps << " reached!"<< std::endl;
-            // std::cout<< "------------------------------------------"  << std::endl;
-            // int j = 0;
-            //     for (double v : tmp.H) {
-            //         if (j==p*(d-1)){
-            //             std::cout << std::endl;
-            //             j=0;
-            //         }
-            //         std::cout << v << " ";
-            //         j ++;
-            //     }
-            //     std::cout << std::endl;
-            // std::cout<< "------------------------------------------" << std::endl;
             return std::pair(theta,true);
         }
         Vector delta(theta.size(), 0.0);
