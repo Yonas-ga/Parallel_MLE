@@ -9,7 +9,7 @@ To do so we implemented Gradient Ascent and Gradient Ascent using Newton's metho
 - NVIDIA GPU version -arch=sm_60
 
 # Project Structure
-
+```
 Project/
 ├── main.cpp
 ├── data.hpp
@@ -28,6 +28,7 @@ Project/
 ├── Plots/
 ├── Figure/
 └── README.md
+```
 
 Main.cpp contains many different functions to test and use all the MLE implementations.
 
@@ -56,7 +57,8 @@ We also implemented the MLE of another real data set.
 We do the data preprocessing by running $ python3 preprocess_loan.py
 
 We then compile using:
-```nvcc -std=c++17 -O2 -arch=native \
+```
+nvcc -std=c++17 -O2 -arch=native \
   -I$CUDA_HOME/targets/x86_64-linux/include \
   -L$CUDA_HOME/targets/x86_64-linux/lib \
   main.cpp parse_CSV.cpp \
@@ -64,8 +66,11 @@ We then compile using:
   parallel/newton_cpu_lazy.cpp parallel/newton_cpu_cv.cpp \
   parallel/GA_cpu_lazy.cpp parallel/GA_cpu_cv.cpp \
   parallel/newton_gpu.cu parallel/GA_gpu.cu \
-  -o loan_cuda```
+  -o loan_cuda
+```
 
 And then output using 
-```$ ./loan_cuda | tee loan_full_test_output.txt```
+```'
+$ ./loan_cuda | tee loan_full_test_output.txt
+```
 
